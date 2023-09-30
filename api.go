@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
+	"strconv"
 )
 
 type API struct {
@@ -34,5 +36,27 @@ func addFilms() []Film {
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
+	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+	if err != nil {
+		a.core.lg.Debug(err.Error(), "can't find page")
+	}
 
+	w.Header().Set("Content-Type", "application/json")
+
+	films := addFilms()
+
+	response := FilmsResponse{
+		Status: 200,
+		Page:   page,
+		Total:  uint64(len(films)),
+		Films:  films,
+	}
+
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		response.Status = 500
+		a.core.lg.Debug(err.Error(), "json packing err")
+	}
+
+	w.Write(jsonResponse)
 }
