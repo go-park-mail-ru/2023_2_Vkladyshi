@@ -13,5 +13,7 @@ func main() {
 	core := Core{lg: slog.New(slog.NewJSONHandler(logFile, nil))}
 	api := API{core: &core}
 
+	mx.HandleFunc("/api/v1/films", api.Films)
+
 	http.ListenAndServe(":8080", mx)
 }
