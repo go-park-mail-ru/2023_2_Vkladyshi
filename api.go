@@ -43,7 +43,7 @@ func (a *API) CreateSession(w *http.ResponseWriter, r *http.Request, email strin
 	SID := Core.RandStringRunes(32)
 
 	a.Core.Mutex.Lock()
-	a.Core.Sessions[SID] = Core.Session{
+	a.Core.Sessions[SID] = Session{
 		Email:     email,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
