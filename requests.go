@@ -1,17 +1,18 @@
 package main
 
 type SignupRequest struct {
-	Login    string `json:"username"`
+	Login    string `json:"login"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type SigninRequest struct {
-	Login    string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
-type Answer struct {
+type Response struct {
 	Status int
-	Body   []interface{}
+	Body   any
 }
+
