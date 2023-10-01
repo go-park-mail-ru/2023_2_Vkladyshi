@@ -6,11 +6,18 @@ import (
 	"net/http"
 	"requests"
 	"strconv"
+	"time"
 )
 
 type API struct {
 	Core *Core.Core
 }
+
+type Session struct {
+	Email     string
+	ExpiresAt time.Time
+}
+
 
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("session_id")
@@ -28,29 +35,25 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	delete(a.Core.Sessions, session.Value)
-	
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
-	
-	var answer requests.Response
-	answer.Status = http.StatusOK
-	bytes, _ := json.Marshal(answer)
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(bytes)
 }
 
 func (a *API) CreateSession(w *http.ResponseWriter, r *http.Request, email string) string {
 	SID := Core.RandStringRunes(32)
 
 	a.Core.Mutex.Lock()
-	a.Core.Sessions[SID] = email
+	a.Core.Sessions[SID] = Core.Session{
+		Email:     email,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
 	a.Core.Mutex.Unlock()
 
 	cookie := &http.Cookie{
 		Name:     "session_id",
 		Value:    SID,
 		Path:     "/",
-		Expires:  time.Now().Add(24 * time.Hour),
+		Expires:  a.Core.Sessions[SID].ExpiresAt,
 		HttpOnly: true,
 	}
 	http.SetCookie(*w, cookie)
@@ -64,8 +67,14 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request Request.SigninRequest
-	body, _ := io.ReadAll(r.Body)
-	err := json.Unmarshal(body, &request)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = json.Unmarshal(body, &request)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -84,7 +93,14 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	var answer requests.Response
 	answer.Status = http.StatusOK
 	answer.Body = a.CreateSession(&w, r, user.Email)
-	bytes, _ := json.Marshal(answer)
+
+	bytes, err := json.Marshal(answer)
+
+	if err != nil {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(bytes)
 }
@@ -96,8 +112,14 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request Request.SignupRequest
-	body, _ := io.ReadAll(r.Body)
-	err := json.Unmarshal(body, &request)
+	body, err := io.ReadAll(r.Body)
+
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	err = json.Unmarshal(body, &request)
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -109,7 +131,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	a.Core.Mutex.RUnlock()
 
 	if found {
-		w.WriteHeader(http.StatusFound)
+		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
@@ -119,8 +141,15 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 
 	var answer requests.Response
 	answer.Status = http.StatusOK
-	bytes, _ := json.Marshal(answer)
+	bytes, err := json.Marshal(answer)
+
+	if err != nil {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(bytes)
 }
+
 

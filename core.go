@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"math/rand"
 	"log/slog"
 	"net/http"
@@ -10,9 +9,9 @@ import (
 )
 
 type Core struct {
-	Sessions map[string]string
+	Sessions map[string]Session
 	Users    map[string]User.User
-	Lg       *log.Logger
+	Lg       *slog.Logger
 	Mutex    sync.RWMutex
 }
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

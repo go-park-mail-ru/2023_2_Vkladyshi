@@ -7,13 +7,17 @@ import (
 )
 
 func main() {
-	mx := http.NewServeMux()
 
 	logFile, _ := os.Create("log.log")
-	core := Core.Core{Lg: slog.New(slog.NewJSONHandler(logFile, nil))}
+
+	core := Core.Core{
+		Lg:       slog.New(slog.NewJSONHandler(logFile, nil)),
+		Sessions: make(map[string]Core.Session),
+		Users:    make(map[string]User.User),
+	}
+
 	api := Api.API{Core: &core}
-	api.Core.Sessions = make(map[string]string)
-	api.Core.Users = make(map[string]User.User)
+	mx := http.NewServeMux()
 	mx.HandleFunc("/signup", api.Signup)
 	mx.HandleFunc("/signin", api.Signin)
 	mx.HandleFunc("/films", api.Films)
