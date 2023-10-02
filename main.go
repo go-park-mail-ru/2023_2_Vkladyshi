@@ -17,7 +17,7 @@ func main() {
 
 	api := API{
 		core: &core,
-		Lg: slog.New(slog.NewJSONHandler(logFile, nil))},
+		lg: slog.New(slog.NewJSONHandler(logFile, nil))},
 	}
 	mx := http.NewServeMux()
 	mx.HandleFunc("/signup", api.Signup)
