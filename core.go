@@ -18,12 +18,15 @@ var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 func (core *Core) CreateSession(w *http.ResponseWriter, r *http.Request, login string) (string, Session) {
 	SID := RandStringRunes(32)
 
-	core.Mutex.Lock()
-	core.sessions[SID] = Session{
+	session := Session{
 		Login:     login,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
+	
+	core.Mutex.Lock()
+	core.sessions[SID] = session
 	core.Mutex.Unlock()
+	
 	return SID, core.sessions[SID]
 }
 
