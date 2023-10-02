@@ -66,7 +66,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func AddFilms() []Film {
+func GetFilms() []Film {
 	films := []Film{}
 
 	films = append(films, Film{"Леди Баг и Супер-Кот: Пробуждение силы", "/static/img/ladybag.png", 7.5, []string{"комедия", "приключения", "фэнтези", "мелодрама"}})
