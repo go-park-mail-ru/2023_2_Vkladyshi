@@ -27,7 +27,7 @@ func (core *Core) CreateSession(w *http.ResponseWriter, r *http.Request, login s
 	core.sessions[SID] = session
 	core.Mutex.Unlock()
 	
-	return SID, core.sessions[SID]
+	return SID, session
 }
 
 func (core *Core) KillSession(sid string) {
