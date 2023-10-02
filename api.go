@@ -4,20 +4,18 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"requests"
-	"strconv"
 	"time"
 )
 
 type API struct {
-	Core *Core.Core
+	core *Core
+	Lg   *slog.Logger
 }
 
 type Session struct {
 	Email     string
 	ExpiresAt time.Time
 }
-
 
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("session_id")
@@ -27,33 +25,33 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, found := a.Core.Sessions[session.Value]
+	_, found := a.core.Sessions[session.Value]
 
 	if !found {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	delete(a.Core.Sessions, session.Value)
+	delete(a.core.Sessions, session.Value)
 	session.Expires = time.Now().AddDate(0, 0, -1)
 	http.SetCookie(w, session)
 }
 
 func (a *API) CreateSession(w *http.ResponseWriter, r *http.Request, email string) string {
-	SID := Core.RandStringRunes(32)
+	SID := RandStringRunes(32)
 
-	a.Core.Mutex.Lock()
-	a.Core.Sessions[SID] = Session{
+	a.core.Mutex.Lock()
+	a.core.Sessions[SID] = Session{
 		Email:     email,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
-	a.Core.Mutex.Unlock()
+	a.core.Mutex.Unlock()
 
 	cookie := &http.Cookie{
 		Name:     "session_id",
 		Value:    SID,
 		Path:     "/",
-		Expires:  a.Core.Sessions[SID].ExpiresAt,
+		Expires:  a.core.Sessions[SID].ExpiresAt,
 		HttpOnly: true,
 	}
 	http.SetCookie(*w, cookie)
@@ -66,38 +64,36 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request Request.SigninRequest
+	var request SigninRequest
+
 	body, err := io.ReadAll(r.Body)
-
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	err = json.Unmarshal(body, &request)
-
-	if err != nil {
+	if err = json.Unmarshal(body, &request); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	a.Core.Mutex.RLock()
-	user, found := a.Core.Users[request.Email]
-	a.Core.Mutex.RUnlock()
+	a.core.Mutex.RLock()
+	user, found := a.core.Users[request.Email]
+	a.core.Mutex.RUnlock()
 
 	if !found || user.Password != request.Password {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
 
-	var answer requests.Response
-	answer.Status = http.StatusOK
-	answer.Body = a.CreateSession(&w, r, user.Email)
+	var response Response
+	response.Status = http.StatusOK
+	response.Body = a.CreateSession(&w, r, user.Email)
 
-	bytes, err := json.Marshal(answer)
+	bytes, err := json.Marshal(response)
 
 	if err != nil {
-		w.WriteHeader(http.StatusConflict)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
@@ -111,9 +107,9 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request Request.SignupRequest
-	body, err := io.ReadAll(r.Body)
+	var request SignupRequest
 
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -126,30 +122,28 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.Core.Mutex.RLock()
-	_, found := a.Core.Users[request.Login]
-	a.Core.Mutex.RUnlock()
+	a.core.Mutex.RLock()
+	_, found := a.core.Users[request.Login]
+	a.core.Mutex.RUnlock()
 
 	if found {
 		w.WriteHeader(http.StatusConflict)
 		return
 	}
 
-	a.Core.Mutex.Lock()
-	a.Core.Users[request.Login] = User.User{Login: request.Login, Email: request.Email, Password: request.Password}
-	a.Core.Mutex.Unlock()
+	a.core.Mutex.Lock()
+	a.core.Users[request.Login] = User{Login: request.Login, Email: request.Email, Password: request.Password}
+	a.core.Mutex.Unlock()
 
-	var answer requests.Response
-	answer.Status = http.StatusOK
-	bytes, err := json.Marshal(answer)
+	var response Response
+	response.Status = http.StatusOK
+	bytes, err := json.Marshal(response)
 
 	if err != nil {
-		w.WriteHeader(http.StatusConflict)
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(bytes)
 }
-
-

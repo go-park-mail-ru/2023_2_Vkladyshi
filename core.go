@@ -2,18 +2,15 @@ package main
 
 import (
 	"math/rand"
-	"log/slog"
-	"net/http"
-	"time"
 	"sync"
 )
 
 type Core struct {
 	Sessions map[string]Session
-	Users    map[string]User.User
-	Lg       *slog.Logger
+	Users    map[string]User
 	Mutex    sync.RWMutex
 }
+
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func RandStringRunes(seed int) string {

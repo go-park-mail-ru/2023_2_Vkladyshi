@@ -10,13 +10,15 @@ func main() {
 
 	logFile, _ := os.Create("log.log")
 
-	core := Core.Core{
-		Lg:       slog.New(slog.NewJSONHandler(logFile, nil)),
-		Sessions: make(map[string]Core.Session),
-		Users:    make(map[string]User.User),
+	core := Core{
+		Sessions: make(map[string]Session),
+		Users:    make(map[string]User),
 	}
 
-	api := Api.API{Core: &core}
+	api := API{
+		core: &core,
+		Lg: slog.New(slog.NewJSONHandler(logFile, nil))}
+	}
 	mx := http.NewServeMux()
 	mx.HandleFunc("/signup", api.Signup)
 	mx.HandleFunc("/signin", api.Signin)
@@ -24,4 +26,3 @@ func main() {
 	mx.HandleFunc("/logout", api.LogoutSession)
 	http.ListenAndServe(":8080", mx)
 }
-
