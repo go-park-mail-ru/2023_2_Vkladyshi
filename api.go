@@ -67,7 +67,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		a.lg.Debug(err.Error(), "json packing err")
+		a.lg.Error("failed to pack json", "err", err.Error())
 		return
 	}
 
