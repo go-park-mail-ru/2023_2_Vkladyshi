@@ -48,7 +48,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 			pageSize = 8
 		}
 
-		films := AddFilms()
+		films := GetFilms()
 		if uint64(cap(films)) < page*pageSize {
 			page = uint64(math.Ceil(float64(uint64(cap(films)) / pageSize)))
 		}
@@ -98,6 +98,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(answer)
 }
+
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
