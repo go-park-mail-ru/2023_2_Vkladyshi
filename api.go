@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"log/slog"
+	"math"
 	"net/http"
 	"strconv"
 )
@@ -13,10 +14,10 @@ type API struct {
 }
 
 type Film struct {
-	Title    string
-	ImageURL string `json:"imagine_url"`
-	Rating   float64
-	Genres   []string
+	Title    string   `json:"title"`
+	ImageURL string   `json:"imagine_url"`
+	Rating   float64  `json:"rating"`
+	Genres   []string `json:"genres"`
 }
 
 type FilmsResponse struct {
@@ -47,14 +48,19 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 	} else {
-		page, _ := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+		page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+		if err != nil {
+			page = 1
+		}
 		pageSize, err := strconv.ParseUint(r.URL.Query().Get("page_size"), 10, 64)
 		if err != nil {
 			pageSize = 8
 		}
 
 		films := addFilms()
-
+		if uint64(cap(films)) < page*pageSize {
+			page = uint64(math.Ceil(float64(uint64(cap(films)) / pageSize)))
+		}
 		filmsResponse := FilmsResponse{
 			Page:     page,
 			Total:    uint64(len(films)),
