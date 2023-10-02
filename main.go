@@ -9,9 +9,10 @@ import (
 func main() {
 	mx := http.NewServeMux()
 
-	logFile, _ := os.Create("log.log")
-	core := Core{lg: slog.New(slog.NewJSONHandler(logFile, nil))}
-	api := API{core: &core}
+	coreLogFile, _ := os.Create("core_log.log")
+	apiLogFile, _ := os.Create("api_log.log")
+	core := Core{lg: slog.New(slog.NewJSONHandler(coreLogFile, nil))}
+	api := API{core: &core, lg: slog.New(slog.NewJSONHandler(apiLogFile, nil))}
 
 	mx.HandleFunc("/api/v1/films", api.Films)
 
