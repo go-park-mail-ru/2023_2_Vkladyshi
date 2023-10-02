@@ -43,30 +43,32 @@ func addFilms() []Film {
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
-	page, _ := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
-	pageSize, err := strconv.ParseUint(r.URL.Query().Get("page_size"), 10, 64)
-	if err != nil {
-		pageSize = 8
-	}
+	response := Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+	} else {
+		page, _ := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+		pageSize, err := strconv.ParseUint(r.URL.Query().Get("page_size"), 10, 64)
+		if err != nil {
+			pageSize = 8
+		}
 
-	films := addFilms()
+		films := addFilms()
 
-	filmsResponse := FilmsResponse{
-		Page:     page,
-		Total:    uint64(len(films)),
-		Films:    films[pageSize*(page-1) : pageSize*page],
-		PageSize: int(pageSize),
-	}
-	response := Response{
-		Status: http.StatusOK,
-		Body:   filmsResponse,
+		filmsResponse := FilmsResponse{
+			Page:     page,
+			Total:    uint64(len(films)),
+			Films:    films[pageSize*(page-1) : pageSize*page],
+			PageSize: int(pageSize),
+		}
+		response.Body = filmsResponse
 	}
 
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
-		response.Status = 500
-		response.Body = nil
+		w.WriteHeader(http.StatusInternalServerError)
 		a.lg.Debug(err.Error(), "json packing err")
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
