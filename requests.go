@@ -7,7 +7,7 @@ type SignupRequest struct {
 }
 
 type SigninRequest struct {
-	Email    string `json:"email"`
+	Login    string `json:"login"`
 	Password string `json:"password"`
 }
 
@@ -15,4 +15,3 @@ type Response struct {
 	Status int
 	Body   any
 }
-
