@@ -14,7 +14,7 @@ type API struct {
 }
 
 type Session struct {
-	Email     string
+	Login    string
 	ExpiresAt time.Time
 }
 
@@ -65,7 +65,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		if !found || user.Password != request.Password {
 			response.Status = http.StatusUnauthorized
 		} else {
-			sid, session := a.core.CreateSession(&w, r, user.Email)
+			sid, session := a.core.CreateSession(&w, r, user.Login)
 			cookie := &http.Cookie{
 				Name:     "session_id",
 				Value:    sid,
