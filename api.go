@@ -10,7 +10,7 @@ import (
 
 type API struct {
 	core *Core
-	Lg   *slog.Logger
+	lg   *slog.Logger
 }
 
 type Session struct {
