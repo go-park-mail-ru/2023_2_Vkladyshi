@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 )
 
@@ -90,5 +91,27 @@ func TestSigninGet(t *testing.T) {
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
+	}
+}
+
+func TestFilmsPages(t *testing.T) {
+	h1 := httptest.NewRequest(http.MethodGet, "/api/v1/films?page=100", nil)
+	h2 := httptest.NewRequest(http.MethodGet, "/api/v1/films?page=2", nil)
+	w1 := httptest.NewRecorder()
+	w2 := httptest.NewRecorder()
+
+	api := API{}
+	api.Films(w1, h1)
+	api.Films(w2, h2)
+
+	var response1, response2 Response
+
+	body1, _ := io.ReadAll(w1.Body)
+	json.Unmarshal(body1, &response1)
+	body2, _ := io.ReadAll(w2.Body)
+	json.Unmarshal(body2, &response2)
+
+	if !reflect.DeepEqual(response1.Body, response2.Body) {
+		t.Errorf("pages not matching")
 	}
 }
