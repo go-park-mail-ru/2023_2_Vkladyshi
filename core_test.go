@@ -1,6 +1,12 @@
 package main
 
-import "testing"
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
 
 func TestCreateUserAccount(t *testing.T) {
 	login := "testLogin"
@@ -36,5 +42,53 @@ func TestCreateAndKillSession(t *testing.T) {
 	isFound = testCore.FindActiveSession(sid)
 	if isFound {
 		t.Errorf("found killed session")
+	}
+}
+
+func TestFilmsPost(t *testing.T) {
+	h := httptest.NewRequest(http.MethodPost, "/api/v1/films", nil)
+	w := httptest.NewRecorder()
+
+	api := API{}
+	api.Films(w, h)
+	var response Response
+
+	body, _ := io.ReadAll(w.Body)
+	json.Unmarshal(body, &response)
+
+	if response.Status != http.StatusMethodNotAllowed {
+		t.Errorf("got incorrect status")
+	}
+}
+
+func TestSignupGet(t *testing.T) {
+	h := httptest.NewRequest(http.MethodGet, "/signup", nil)
+	w := httptest.NewRecorder()
+
+	api := API{}
+	api.Signup(w, h)
+	var response Response
+
+	body, _ := io.ReadAll(w.Body)
+	json.Unmarshal(body, &response)
+
+	if response.Status != http.StatusMethodNotAllowed {
+		t.Errorf("got incorrect status")
+	}
+}
+
+func TestSigninGet(t *testing.T) {
+	h := httptest.NewRequest(http.MethodGet, "/signin", nil)
+	w := httptest.NewRecorder()
+
+	api := API{}
+	api.Signin(w, h)
+	var response Response
+
+	body, _ := io.ReadAll(w.Body)
+	json.Unmarshal(body, &response)
+
+	if response.Status != http.StatusMethodNotAllowed {
+		t.Errorf("got incorrect status")
 	}
 }
