@@ -12,6 +12,6 @@ type SigninRequest struct {
 }
 
 type Response struct {
-	Status int
-	Body   any
+	Status int `json:"status"`
+	Body   any `json:"body"`
 }
