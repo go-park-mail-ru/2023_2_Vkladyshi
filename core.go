@@ -3,7 +3,6 @@ package main
 import (
 	"log/slog"
 	"math/rand"
-	"net/http"
 	"sync"
 	"time"
 )
@@ -17,7 +16,7 @@ type Core struct {
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func (core *Core) CreateSession(w *http.ResponseWriter, r *http.Request, login string) (string, Session) {
+func (core *Core) CreateSession(login string) (string, Session) {
 	SID := RandStringRunes(32)
 
 	session := Session{
