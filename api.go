@@ -119,7 +119,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		if !found || user.Password != request.Password {
 			response.Status = http.StatusUnauthorized
 		} else {
-			sid, session := a.core.CreateSession(&w, r, user.Login)
+			sid, session := a.core.CreateSession(user.Login)
 			cookie := &http.Cookie{
 				Name:     "session_id",
 				Value:    sid,
