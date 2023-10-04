@@ -29,6 +29,7 @@ type Film struct {
 
 type FilmsResponse struct {
 	Page           uint64 `json:"current_page"`
+	PageSize       uint64 `json:"page_size"`
 	CollectionName string `json:"collection_name"`
 	Total          uint64 `json:"total"`
 	Films          []Film `json:"films"`
@@ -48,7 +49,10 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			page = 1
 		}
-		pageSize := uint64(8)
+		pageSize, err := strconv.ParseUint(r.URL.Query().Get("page_size"), 10, 64)
+		if err != nil {
+			pageSize = 8
+		}
 
 		collectionName, found := a.core.GetCollection(collectionId)
 		if !found {
@@ -61,10 +65,14 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if uint64(cap(films)) < page*pageSize {
-			page = uint64(math.Ceil(float64(uint64(cap(films)) / pageSize)))
+			page = uint64(math.Ceil(float64(uint64(cap(films))/pageSize)) + 1)
+		}
+		if pageSize > uint64(len(films)) {
+			pageSize = uint64(len(films))
 		}
 		filmsResponse := FilmsResponse{
 			Page:           page,
+			PageSize:       pageSize,
 			Total:          uint64(len(films)),
 			CollectionName: collectionName,
 			Films:          films[pageSize*(page-1) : pageSize*page],
