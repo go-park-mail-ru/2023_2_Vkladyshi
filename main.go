@@ -7,7 +7,6 @@ import (
 )
 
 func main() {
-
 	logFile, _ := os.Create("log.log")
 	lg := slog.New(slog.NewJSONHandler(logFile, nil))
 

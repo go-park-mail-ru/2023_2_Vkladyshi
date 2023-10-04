@@ -95,12 +95,17 @@ func TestSigninGet(t *testing.T) {
 }
 
 func TestFilmsPages(t *testing.T) {
+	testCore := Core{
+		collections: map[string]string{
+			"new": "Новинки",
+		},
+	}
 	h1 := httptest.NewRequest(http.MethodGet, "/api/v1/films?page=100", nil)
 	h2 := httptest.NewRequest(http.MethodGet, "/api/v1/films?page=2", nil)
 	w1 := httptest.NewRecorder()
 	w2 := httptest.NewRecorder()
 
-	api := API{}
+	api := API{core: &testCore}
 	api.Films(w1, h1)
 	api.Films(w2, h2)
 
