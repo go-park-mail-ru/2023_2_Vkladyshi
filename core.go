@@ -3,6 +3,7 @@ package main
 import (
 	"log/slog"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 )
@@ -66,7 +67,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetCollection(collection_id string) (string, bool) {
+func (core *Core) GetCollection(collectionId string) (string, bool) {
 	core.Mutex.RLock()
 	collectionName, found := core.collections[collectionId]
 	core.Mutex.RUnlock()
@@ -76,15 +77,29 @@ func (core *Core) GetCollection(collection_id string) (string, bool) {
 func GetFilms() []Film {
 	films := []Film{}
 
-	films = append(films, Film{"Леди Баг и Супер-Кот: Пробуждение силы", "../../icons/lady-poster.jpg", 7.5, []string{"комедия", "приключения", "фэнтези", "мелодрама"}})
-	films = append(films, Film{"Барби", "../../icons/Barbie_2023_poster.jpeg", 6.7, []string{"комедия", "приключения", "фэнтези"}})
-	films = append(films, Film{"Опенгеймер", "../../icons/Op.jpg", 8.5, []string{"биография", "драма", "история"}})
-	films = append(films, Film{"Слуга народа", "../../icons/Slave_nation.jpg", 0.7, []string{"комедия"}})
-	films = append(films, Film{"Черная Роза", "../../icons/Black_rose.jpg", 1.5, []string{"детектив", "триллер", "криминал"}})
-	films = append(films, Film{"Бесславные ублюдки", "../../icons/bastards.jpg", 8.0, []string{"боевик", "военный", "драма", "комедия"}})
-	films = append(films, Film{"Бэтмен: Начало", "../../icons/Batman_Begins.jpg", 7.9, []string{"боевик", "фантастика", "драма", "приключения"}})
-	films = append(films, Film{"Криминальное чтиво", "../../icons/criminal.jpeg", 8.6, []string{"криминал", "драма"}})
-	films = append(films, Film{"Терминатор", "/", 8.0, []string{"боевик", "фантастика", "триллер"}})
+	films = append(films, Film{"Леди Баг и Супер-Кот: Пробуждение силы", "../../icons/lady-poster.jpg", 7.5, []string{"Комедия", "Приключения", "Фэнтези", "Мелодрама"}})
+	films = append(films, Film{"Барби", "../../icons/Barbie_2023_poster.jpeg", 6.7, []string{"Комедия", "Приключения", "Фэнтези"}})
+	films = append(films, Film{"Опенгеймер", "../../icons/Op.jpg", 8.5, []string{"Биография", "Драма", "История"}})
+	films = append(films, Film{"Слуга народа", "../../icons/Slave_nation.jpg", 0.7, []string{"Комедия"}})
+	films = append(films, Film{"Черная Роза", "../../icons/Black_rose.jpg", 1.5, []string{"Детектив", "Триллер", "Криминал"}})
+	films = append(films, Film{"Бесславные ублюдки", "../../icons/bastards.jpg", 8.0, []string{"Боевик", "Военный", "Драма", "Комедия"}})
+	films = append(films, Film{"Бэтмен: Начало", "../../icons/Batman_Begins.jpg", 7.9, []string{"Боевик", "Фантастика", "Драма", "Приключения"}})
+	films = append(films, Film{"Криминальное чтиво", "../../icons/criminal.jpeg", 8.6, []string{"Криминал", "Драма"}})
+	films = append(films, Film{"Терминатор", "/", 8.0, []string{"Боевик", "Фантастика", "Триллер"}})
 
 	return films
+}
+
+func SortFilms(collectionName string, films []Film) []Film {
+	sorted := make([]Film, 0, cap(films))
+
+	for _, film := range films {
+		for _, genre := range film.Genres {
+			if strings.EqualFold(genre, collectionName) {
+				sorted = append(sorted, film)
+			}
+		}
+	}
+
+	return sorted
 }
