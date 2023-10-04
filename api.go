@@ -70,14 +70,14 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		pageSize = 8
 	}
 
-	collectionName, found := a.core.GetCollection(collectionId)
+	collectionName, found, _ := a.core.GetCollection(collectionId)
 	if !found {
 		collectionName = "Новинки"
 	}
 
-	films := GetFilms()
+	films, _ := GetFilms()
 	if collectionName != "Новинки" {
-		films = SortFilms(collectionName, films)
+		films, _ = SortFilms(collectionName, films)
 	}
 
 	if uint64(cap(films)) < page*pageSize {
@@ -108,7 +108,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found := a.core.FindActiveSession(session.Value)
+	found, _ := a.core.FindActiveSession(session.Value)
 	if !found {
 		response.Status = http.StatusUnauthorized
 		a.SendResponse(w, response)
@@ -128,7 +128,7 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 
 	session, err := r.Cookie("session_id")
 	if err == nil && session != nil {
-		authorized = a.core.FindActiveSession(session.Value)
+		authorized, _ = a.core.FindActiveSession(session.Value)
 	}
 
 	if !authorized {
@@ -162,13 +162,13 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, found := a.core.FindUserAccount(request.Login)
+	user, found, _ := a.core.FindUserAccount(request.Login)
 	if !found || user.Password != request.Password {
 		response.Status = http.StatusUnauthorized
 		a.SendResponse(w, response)
 		return
 	} else {
-		sid, session := a.core.CreateSession(user.Login)
+		sid, session, _ := a.core.CreateSession(user.Login)
 		cookie := &http.Cookie{
 			Name:     "session_id",
 			Value:    sid,
@@ -205,7 +205,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, found := a.core.FindUserAccount(request.Login)
+	_, found, _ := a.core.FindUserAccount(request.Login)
 	if found {
 		response.Status = http.StatusConflict
 		a.SendResponse(w, response)

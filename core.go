@@ -18,7 +18,7 @@ type Core struct {
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func (core *Core) CreateSession(login string) (string, Session) {
+func (core *Core) CreateSession(login string) (string, Session, error) {
 	SID := RandStringRunes(32)
 
 	session := Session{
@@ -30,33 +30,35 @@ func (core *Core) CreateSession(login string) (string, Session) {
 	core.sessions[SID] = session
 	core.Mutex.Unlock()
 
-	return SID, session
+	return SID, session, nil
 }
 
-func (core *Core) KillSession(sid string) {
+func (core *Core) KillSession(sid string) error {
 	core.Mutex.Lock()
 	delete(core.sessions, sid)
 	core.Mutex.Unlock()
+	return nil
 }
 
-func (core *Core) FindActiveSession(sid string) bool {
+func (core *Core) FindActiveSession(sid string) (bool, error) {
 	core.Mutex.RLock()
 	_, found := core.sessions[sid]
 	core.Mutex.RUnlock()
-	return found
+	return found, nil
 }
 
-func (core *Core) CreateUserAccount(request SignupRequest) {
+func (core *Core) CreateUserAccount(request SignupRequest) error {
 	core.Mutex.Lock()
 	core.users[request.Login] = User{Login: request.Login, Email: request.Email, Password: request.Password}
 	core.Mutex.Unlock()
+	return nil
 }
 
-func (core *Core) FindUserAccount(login string) (User, bool) {
+func (core *Core) FindUserAccount(login string) (User, bool, error) {
 	core.Mutex.RLock()
 	user, found := core.users[login]
 	core.Mutex.RUnlock()
-	return user, found
+	return user, found, nil
 }
 
 func RandStringRunes(seed int) string {
@@ -67,14 +69,14 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetCollection(collectionId string) (string, bool) {
+func (core *Core) GetCollection(collectionId string) (string, bool, error) {
 	core.Mutex.RLock()
 	collectionName, found := core.collections[collectionId]
 	core.Mutex.RUnlock()
-	return collectionName, found
+	return collectionName, found, nil
 }
 
-func GetFilms() []Film {
+func GetFilms() ([]Film, error) {
 	films := []Film{}
 
 	films = append(films, Film{"Леди Баг и Супер-Кот: Пробуждение силы", "../../icons/lady-poster.jpg", 7.5, []string{"Комедия", "Приключения", "Фэнтези", "Мелодрама", "Зарубежный"}})
@@ -87,10 +89,10 @@ func GetFilms() []Film {
 	films = append(films, Film{"Криминальное чтиво", "../../icons/criminal.jpeg", 8.6, []string{"Криминал", "Драма", "Зарубежный"}})
 	films = append(films, Film{"Терминатор", "/", 8.0, []string{"Боевик", "Фантастика", "Триллер", "Зарубежный"}})
 
-	return films
+	return films, nil
 }
 
-func SortFilms(collectionName string, films []Film) []Film {
+func SortFilms(collectionName string, films []Film) ([]Film, error) {
 	sorted := make([]Film, 0, cap(films))
 
 	for _, film := range films {
@@ -101,5 +103,5 @@ func SortFilms(collectionName string, films []Film) []Film {
 		}
 	}
 
-	return sorted
+	return sorted, nil
 }

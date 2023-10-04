@@ -22,7 +22,7 @@ func TestCreateUserAccount(t *testing.T) {
 
 	testCore.CreateUserAccount(testRequest)
 
-	_, foundAccount := testCore.FindUserAccount(login)
+	_, foundAccount, _ := testCore.FindUserAccount(login)
 	if !foundAccount {
 		t.Errorf("user not found")
 	}
@@ -32,15 +32,15 @@ func TestCreateAndKillSession(t *testing.T) {
 	login := "testLogin"
 	testCore := Core{sessions: make(map[string]Session)}
 
-	sid, _ := testCore.CreateSession(login)
-	isFound := testCore.FindActiveSession(sid)
+	sid, _, _ := testCore.CreateSession(login)
+	isFound, _ := testCore.FindActiveSession(sid)
 	if !isFound {
 		t.Errorf("session not found")
 	}
 
 	testCore.KillSession(sid)
 
-	isFound = testCore.FindActiveSession(sid)
+	isFound, _ = testCore.FindActiveSession(sid)
 	if isFound {
 		t.Errorf("found killed session")
 	}
