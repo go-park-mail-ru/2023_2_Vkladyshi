@@ -22,16 +22,17 @@ type Session struct {
 
 type Film struct {
 	Title    string   `json:"title"`
-	ImageURL string   `json:"imagine_url"`
+	ImageURL string   `json:"poster_href"`
 	Rating   float64  `json:"rating"`
 	Genres   []string `json:"genres"`
 }
 
 type FilmsResponse struct {
-	Page     uint64 `json:"current_page"`
-	PageSize int    `json:"page_size"`
-	Total    uint64 `json:"total"`
-	Films    []Film `json:"films"`
+	Page           uint64 `json:"current_page"`
+	PageSize       uint64 `json:"page_size"`
+	CollectionName string `json:"collection_name"`
+	Total          uint64 `json:"total"`
+	Films          []Film `json:"films"`
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
@@ -39,6 +40,11 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 	} else {
+		collectionId := r.URL.Query().Get("collection_id")
+		if collectionId == "" {
+			collectionId = "new"
+		}
+
 		page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
 		if err != nil {
 			page = 1
@@ -48,15 +54,28 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 			pageSize = 8
 		}
 
+		collectionName, found := a.core.GetCollection(collectionId)
+		if !found {
+			collectionName = "Новинки"
+		}
+
 		films := GetFilms()
+		if collectionName != "Новинки" {
+			films = SortFilms(collectionName, films)
+		}
+
 		if uint64(cap(films)) < page*pageSize {
-			page = uint64(math.Ceil(float64(uint64(cap(films)) / pageSize)))
+			page = uint64(math.Ceil(float64(uint64(cap(films))/pageSize)) + 1)
+		}
+		if pageSize > uint64(len(films)) {
+			pageSize = uint64(len(films))
 		}
 		filmsResponse := FilmsResponse{
-			Page:     page,
-			Total:    uint64(len(films)),
-			Films:    films[pageSize*(page-1) : pageSize*page],
-			PageSize: int(pageSize),
+			Page:           page,
+			PageSize:       pageSize,
+			Total:          uint64(len(films)),
+			CollectionName: collectionName,
+			Films:          films[pageSize*(page-1) : pageSize*page],
 		}
 		response.Body = filmsResponse
 	}
@@ -87,6 +106,29 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		a.core.KillSession(session.Value)
 		session.Expires = time.Now().AddDate(0, 0, -1)
 		http.SetCookie(w, session)
+	}
+
+	answer, err := json.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(answer)
+}
+
+func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
+	response := Response{Status: http.StatusOK, Body: nil}
+	var authorized bool
+
+	session, err := r.Cookie("session_id")
+	if err == nil && session != nil {
+		authorized = a.core.FindActiveSession(session.Value)
+	}
+
+	if !authorized {
+		response.Status = http.StatusUnauthorized
 	}
 
 	answer, err := json.Marshal(response)
