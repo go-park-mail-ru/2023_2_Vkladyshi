@@ -113,17 +113,14 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 	response := Response{Status: http.StatusOK, Body: nil}
 	var authorized bool
-	if r.Method != http.MethodPost {
-		response.Status = http.StatusMethodNotAllowed
-	} else {
-		session, err := r.Cookie("session_id")
-		if err == nil && session != nil {
-			_, authorized = a.core.FindActiveSession(session.Value)
-		}
 
-		if !authorized {
-			response.Status = http.StatusUnauthorized
-		}
+	session, err := r.Cookie("session_id")
+	if err == nil && session != nil {
+		authorized = a.core.FindActiveSession(session.Value)
+	}
+
+	if !authorized {
+		response.Status = http.StatusUnauthorized
 	}
 
 	answer, err := json.Marshal(response)
