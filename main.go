@@ -27,6 +27,7 @@ func main() {
 	mx.HandleFunc("/signup", api.Signup)
 	mx.HandleFunc("/signin", api.Signin)
 	mx.HandleFunc("/logout", api.LogoutSession)
+	mx.HandleFunc("/authcheck", api.AuthAccept)
 	mx.HandleFunc("/api/v1/films", api.Films)
 	http.ListenAndServe(":8080", mx)
 }

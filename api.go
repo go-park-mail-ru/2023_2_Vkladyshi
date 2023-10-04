@@ -22,7 +22,7 @@ type Session struct {
 
 type Film struct {
 	Title    string   `json:"title"`
-	ImageURL string   `json:"imagine_url"`
+	ImageURL string   `json:"poster_href"`
 	Rating   float64  `json:"rating"`
 	Genres   []string `json:"genres"`
 }
@@ -110,6 +110,32 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	w.Write(answer)
 }
 
+func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
+	response := Response{Status: http.StatusOK, Body: nil}
+	var authorized bool
+	if r.Method != http.MethodPost {
+		response.Status = http.StatusMethodNotAllowed
+	} else {
+		session, err := r.Cookie("session_id")
+		if err == nil && session != nil {
+			_, authorized = a.core.FindActiveSession(session.Value)
+		}
+
+		if !authorized {
+			response.Status = http.StatusUnauthorized
+		}
+	}
+
+	answer, err := json.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(answer)
+}
+
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
@@ -136,7 +162,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 				Value:    sid,
 				Path:     "/",
 				Expires:  session.ExpiresAt,
-				HttpOnly: false,
+				HttpOnly: true,
 			}
 			http.SetCookie(w, cookie)
 		}
