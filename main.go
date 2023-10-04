@@ -14,7 +14,10 @@ func main() {
 	core := Core{
 		sessions: make(map[string]Session),
 		users:    make(map[string]User),
-		lg:       lg.With("module", "core"),
+		collections: map[string]string{
+			"new": "Новинки",
+		},
+		lg: lg.With("module", "core"),
 	}
 	api := API{core: &core, lg: lg.With("module", "api")}
 
