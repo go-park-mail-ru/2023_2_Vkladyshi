@@ -189,7 +189,10 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(answer)
+	_, err = w.Write(answer)
+	if err != nil {
+		a.lg.Error("failed to send response", "err", err.Error())
+	}
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
@@ -224,5 +227,8 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(answer)
+	_, err = w.Write(answer)
+	if err != nil {
+		a.lg.Error("failed to send response", "err", err.Error())
+	}
 }
