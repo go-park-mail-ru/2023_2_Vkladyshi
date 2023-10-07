@@ -80,11 +80,11 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		films, _ = SortFilms(collectionName, films)
 	}
 
-	if uint64(cap(films)) < page*pageSize {
-		page = uint64(math.Ceil(float64(uint64(cap(films)) / pageSize)))
+	if uint64(len(films)) < page*pageSize {
+		page = uint64(math.Ceil(float64(len(films)) / float64(pageSize)))
 	}
-	if pageSize > uint64(len(films)) {
-		pageSize = uint64(len(films))
+	if pageSize > uint64(len(films))-(page-1)*pageSize {
+		pageSize = uint64(len(films)) - (page-1)*pageSize
 	}
 	filmsResponse := FilmsResponse{
 		Page:           page,
