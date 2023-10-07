@@ -64,8 +64,8 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 			films = SortFilms(collectionName, films)
 		}
 
-		if uint64(cap(films)) < page*pageSize {
-			page = uint64(math.Ceil(float64(uint64(cap(films))/pageSize)) + 1)
+		if uint64(len(films)) < page*pageSize {
+			page = uint64(math.Ceil(float64(len(films)) / float64(pageSize)))
 		}
 		if pageSize > uint64(len(films)) {
 			pageSize = uint64(len(films))
@@ -88,7 +88,10 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonResponse)
+	_, err = w.Write(jsonResponse)
+	if err != nil {
+		a.lg.Error("failed to send response", "err", err.Error())
+	}
 }
 
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +118,10 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(answer)
+	_, err = w.Write(answer)
+	if err != nil {
+		a.lg.Error("failed to send response", "err", err.Error())
+	}
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +144,10 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(answer)
+	_, err = w.Write(answer)
+	if err != nil {
+		a.lg.Error("failed to send response", "err", err.Error())
+	}
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {

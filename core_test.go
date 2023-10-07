@@ -55,7 +55,10 @@ func TestFilmsPost(t *testing.T) {
 	var response Response
 
 	body, _ := io.ReadAll(w.Body)
-	json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
@@ -71,7 +74,10 @@ func TestSignupGet(t *testing.T) {
 	var response Response
 
 	body, _ := io.ReadAll(w.Body)
-	json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
@@ -87,7 +93,10 @@ func TestSigninGet(t *testing.T) {
 	var response Response
 
 	body, _ := io.ReadAll(w.Body)
-	json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
