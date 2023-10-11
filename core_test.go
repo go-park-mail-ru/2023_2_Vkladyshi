@@ -20,7 +20,10 @@ func TestCreateUserAccount(t *testing.T) {
 		Email:    email,
 	}
 
-	testCore.CreateUserAccount(testRequest)
+	err := testCore.CreateUserAccount(testRequest)
+	if err != nil {
+		t.Errorf("failed to create user account")
+	}
 
 	_, foundAccount, _ := testCore.FindUserAccount(login)
 	if !foundAccount {
@@ -38,7 +41,10 @@ func TestCreateAndKillSession(t *testing.T) {
 		t.Errorf("session not found")
 	}
 
-	testCore.KillSession(sid)
+	err := testCore.KillSession(sid)
+	if err != nil {
+		t.Errorf("failed to kill session")
+	}
 
 	isFound, _ = testCore.FindActiveSession(sid)
 	if isFound {

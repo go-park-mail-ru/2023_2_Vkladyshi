@@ -117,7 +117,10 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	} else {
-		a.core.KillSession(session.Value)
+		err := a.core.KillSession(session.Value)
+		if err != nil {
+			a.core.lg.Error("failed to kill session", "err", err.Error())
+		}
 		session.Expires = time.Now().AddDate(0, 0, -1)
 		http.SetCookie(w, session)
 	}
@@ -214,7 +217,10 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	} else {
-		a.core.CreateUserAccount(request)
+		err := a.core.CreateUserAccount(request)
+		if err != nil {
+			a.core.lg.Error("failed to create user account", "err", err.Error())
+		}
 	}
 
 	a.SendResponse(w, response)
