@@ -48,7 +48,7 @@ func (core *Core) FindActiveSession(sid string) bool {
 
 func (core *Core) CreateUserAccount(request SignupRequest) {
 	core.Mutex.Lock()
-	core.users[request.Login] = User{Login: request.Login, Email: request.Email, Password: request.Password}
+	core.users[request.Login] = User(request)
 	core.Mutex.Unlock()
 }
 
