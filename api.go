@@ -44,7 +44,10 @@ func (a *API) SendResponse(w http.ResponseWriter, response Response) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(jsonResponse)
+	_, err = w.Write(jsonResponse)
+	if err != nil {
+		a.lg.Error("failed to send response", "err", err.Error())
+	}
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {

@@ -37,5 +37,8 @@ func main() {
 	mx.HandleFunc("/logout", api.LogoutSession)
 	mx.HandleFunc("/authcheck", api.AuthAccept)
 	mx.HandleFunc("/api/v1/films", api.Films)
-	http.ListenAndServe(":8080", mx)
+	err := http.ListenAndServe(":8080", mx)
+	if err != nil {
+		api.lg.Error("ListenAndServe error", "err", err.Error())
+	}
 }

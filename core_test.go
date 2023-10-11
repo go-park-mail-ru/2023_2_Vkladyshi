@@ -55,7 +55,10 @@ func TestFilmsPost(t *testing.T) {
 	var response Response
 
 	body, _ := io.ReadAll(w.Body)
-	json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
@@ -71,7 +74,10 @@ func TestSignupGet(t *testing.T) {
 	var response Response
 
 	body, _ := io.ReadAll(w.Body)
-	json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
@@ -87,7 +93,10 @@ func TestSigninGet(t *testing.T) {
 	var response Response
 
 	body, _ := io.ReadAll(w.Body)
-	json.Unmarshal(body, &response)
+	err := json.Unmarshal(body, &response)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
@@ -112,9 +121,15 @@ func TestFilmsPages(t *testing.T) {
 	var response1, response2 Response
 
 	body1, _ := io.ReadAll(w1.Body)
-	json.Unmarshal(body1, &response1)
+	err := json.Unmarshal(body1, &response1)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 	body2, _ := io.ReadAll(w2.Body)
-	json.Unmarshal(body2, &response2)
+	err = json.Unmarshal(body2, &response2)
+	if err != nil {
+		t.Error("cant unmarshal jsone")
+	}
 
 	if !reflect.DeepEqual(response1.Body, response2.Body) {
 		t.Errorf("pages not matching")

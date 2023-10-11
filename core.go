@@ -49,7 +49,7 @@ func (core *Core) FindActiveSession(sid string) (bool, error) {
 
 func (core *Core) CreateUserAccount(request SignupRequest) error {
 	core.Mutex.Lock()
-	core.users[request.Login] = User{Login: request.Login, Email: request.Email, Password: request.Password}
+	core.users[request.Login] = User(request)
 	core.Mutex.Unlock()
 	return nil
 }
