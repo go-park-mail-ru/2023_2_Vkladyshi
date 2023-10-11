@@ -1,7 +1,7 @@
 name: CI_DEPLOY
 
 on:
-  merge:
+  push:
     branches:
       - 'main'
 
@@ -18,7 +18,7 @@ jobs:
           go-version: '1.21'
 
       - name: Build binary
-        run: go build -o deploy
+        run: go build -o movie_hub
 
       - name: Copy file
         uses: appleboy/scp-action@v0.1.4
@@ -27,8 +27,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           port: ${{ secrets.PORT }}
           key: ${{ secrets.KEY }}
-          source: "deploy"
-          target: ./
+          source: "movie_hub,movie_hub.service"
+          target: /home/ubuntu/
 
       - name: executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@v1.0.0
@@ -37,4 +37,6 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           port: ${{ secrets.PORT }}
-          script: systemctl reload deploy
+          script: |
+            systemctl stop movie_hub
+            systemctl start movie_hub
