@@ -1,5 +1,7 @@
 [Unit]
 Description=TP project kinopoisk by vkladishy
+Wants=network-online.target
+After=network.target network-online.target
 
 [Service]
 Type=Simple
