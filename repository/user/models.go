@@ -2,7 +2,7 @@ package user_repo
 
 type UserItem struct {
 	Id               int
-	name             string
+	Name             string
 	Birthdate        string
 	Photo            string
 	Login            string
