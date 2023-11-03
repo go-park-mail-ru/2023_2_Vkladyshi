@@ -1,4 +1,4 @@
-package film_repo
+package film
 
 type FilmItem struct {
 	Id          int

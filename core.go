@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"log/slog"
 	"math/rand"
 	"strings"
@@ -14,6 +15,7 @@ type Core struct {
 	collections map[string]string
 	Mutex       sync.RWMutex
 	lg          *slog.Logger
+	Db          *sql.DB
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
