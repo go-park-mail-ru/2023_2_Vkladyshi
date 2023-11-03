@@ -2,21 +2,26 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 
 	_ "github.com/jackc/pgx/stdlib"
 	"gopkg.in/yaml.v2"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
+	profile "github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/user"
 )
 
 type DbDsnCfg struct {
-	User     string `yaml:"user"`
-	DbName   string `yaml:"dbname"`
-	Password string `yaml:"password"`
-	Host     string `yaml:"host"`
-	Port     string `yaml:"port"`
-	Sslmode  string `yaml:"sslmode"`
+	User         string `yaml:"user"`
+	DbName       string `yaml:"dbname"`
+	Password     string `yaml:"password"`
+	Host         string `yaml:"host"`
+	Port         int    `yaml:"port"`
+	Sslmode      string `yaml:"sslmode"`
+	MaxOpenConns int    `yaml:"max_open_conns"`
 }
 
 func getPostgres() (*sql.DB, error) {
@@ -31,8 +36,8 @@ func getPostgres() (*sql.DB, error) {
 		return nil, err
 	}
 
-	dsn := "user=" + dsnConfig.User + "dbname=" + dsnConfig.DbName + "password=" + dsnConfig.Password + "host=" + dsnConfig.Host +
-		"port=" + dsnConfig.Port + "sslmode=" + dsnConfig.Sslmode
+	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
+		dsnConfig.User, dsnConfig.DbName, dsnConfig.Password, dsnConfig.Host, dsnConfig.Port, dsnConfig.Sslmode)
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
@@ -41,7 +46,7 @@ func getPostgres() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(10)
+	db.SetMaxOpenConns(dsnConfig.MaxOpenConns)
 
 	return db, nil
 }
@@ -56,7 +61,6 @@ func main() {
 	}
 	core := Core{
 		sessions: make(map[string]Session),
-		users:    make(map[string]User),
 		collections: map[string]string{
 			"new":       "Новинки",
 			"action":    "Боевик",
@@ -71,8 +75,9 @@ func main() {
 			"melodrama": "Мелодрама",
 			"horror":    "Ужас",
 		},
-		lg: lg.With("module", "core"),
-		Db: db,
+		lg:    lg.With("module", "core"),
+		Films: &film.RepoPostgre{DB: db},
+		Users: &profile.RepoPostgre{DB: db},
 	}
 	api := API{core: &core, lg: lg.With("module", "api")}
 

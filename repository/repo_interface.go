@@ -5,5 +5,6 @@ import (
 )
 
 type Repository interface {
-	GetFilmsByGenre(genre string, start int, end int) ([]*film.FilmItem, error)
+	GetFilmsByGenre(genre string, start uint32, end uint32) ([]film.FilmItem, error)
+	GetFilms(start uint32, end uint32) ([]film.FilmItem, error)
 }

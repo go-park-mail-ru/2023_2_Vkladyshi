@@ -1,7 +1,7 @@
-package user_repo
+package user
 
 type UserItem struct {
-	Id               int
+	Id               uint32 `sql:"AUTO_INCREMENT"`
 	Name             string
 	Birthdate        string
 	Photo            string

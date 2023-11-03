@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 )
 
 type API struct {
@@ -20,19 +21,12 @@ type Session struct {
 	ExpiresAt time.Time
 }
 
-type Film struct {
-	Title    string   `json:"title"`
-	ImageURL string   `json:"poster_href"`
-	Rating   float64  `json:"rating"`
-	Genres   []string `json:"genres"`
-}
-
 type FilmsResponse struct {
-	Page           uint64 `json:"current_page"`
-	PageSize       uint64 `json:"page_size"`
-	CollectionName string `json:"collection_name"`
-	Total          uint64 `json:"total"`
-	Films          []Film `json:"films"`
+	Page           uint64          `json:"current_page"`
+	PageSize       uint64          `json:"page_size"`
+	CollectionName string          `json:"collection_name"`
+	Total          uint64          `json:"total"`
+	Films          []film.FilmItem `json:"films"`
 }
 
 func (a *API) SendResponse(w http.ResponseWriter, response Response) {
@@ -59,11 +53,6 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	collectionId := r.URL.Query().Get("collection_id")
-	if collectionId == "" {
-		collectionId = "new"
-	}
-
 	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
 	if err != nil {
 		page = 1
@@ -73,28 +62,20 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		pageSize = 8
 	}
 
-	collectionName, found, _ := a.core.GetCollection(collectionId)
-	if !found {
-		collectionName = "Новинки"
+	films := []film.FilmItem{}
+	collectionId := r.URL.Query().Get("collection_id")
+	if collectionId == "" {
+		films = a.core.GetFilms(uint32(page*pageSize+1), uint32((page+1)*pageSize+1))
+	} else {
+		films = a.core.GetFilmsByGenre(collectionId, uint32(page*pageSize+1), uint32((page+1)*pageSize+1))
 	}
 
-	films, _ := GetFilms()
-	if collectionName != "Новинки" {
-		films, _ = SortFilms(collectionName, films)
-	}
-
-	if uint64(len(films)) < page*pageSize {
-		page = uint64(math.Ceil(float64(len(films)) / float64(pageSize)))
-	}
-	if pageSize > uint64(len(films))-(page-1)*pageSize {
-		pageSize = uint64(len(films)) - (page-1)*pageSize
-	}
 	filmsResponse := FilmsResponse{
 		Page:           page,
 		PageSize:       pageSize,
 		Total:          uint64(len(films)),
-		CollectionName: collectionName,
-		Films:          films[pageSize*(page-1) : pageSize*page],
+		CollectionName: collectionId,
+		Films:          films,
 	}
 	response.Body = filmsResponse
 
@@ -168,8 +149,8 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, found, _ := a.core.FindUserAccount(request.Login)
-	if !found || user.Password != request.Password {
+	user, found := a.core.FindUserAccount(request.Login, request.Password)
+	if !found {
 		response.Status = http.StatusUnauthorized
 		a.SendResponse(w, response)
 		return
@@ -211,13 +192,13 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, found, _ := a.core.FindUserAccount(request.Login)
+	found := a.core.FindUserByLogin(request.Login)
 	if found {
 		response.Status = http.StatusConflict
 		a.SendResponse(w, response)
 		return
 	} else {
-		err := a.core.CreateUserAccount(request)
+		a.core.CreateUserAccount(request)
 		if err != nil {
 			a.core.lg.Error("failed to create user account", "err", err.Error())
 		}
