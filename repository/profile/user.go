@@ -1,4 +1,4 @@
-package user
+package profile
 
 type UserItem struct {
 	Id               uint32 `sql:"AUTO_INCREMENT"`

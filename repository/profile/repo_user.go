@@ -1,6 +1,12 @@
 package profile
 
-import "database/sql"
+import (
+	"database/sql"
+	"fmt"
+	"log/slog"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+)
 
 type IUserRepo interface {
 	GetUser(login string, password string) (*UserItem, bool, error)
@@ -10,6 +16,25 @@ type IUserRepo interface {
 
 type RepoPostgre struct {
 	DB *sql.DB
+}
+
+func GetFilmRepo(config configs.DbDsnCfg, lg *slog.Logger) IUserRepo {
+	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
+		config.User, config.DbName, config.Password, config.Host, config.Port, config.Sslmode)
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		lg.Error("sql open error", "err", err.Error())
+		return nil
+	}
+	err = db.Ping()
+	if err != nil {
+		lg.Error("sql ping error", "err", err.Error())
+		return nil
+	}
+	db.SetMaxOpenConns(config.MaxOpenConns)
+
+	postgreDb := RepoPostgre{DB: db}
+	return &postgreDb
 }
 
 func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool, error) {

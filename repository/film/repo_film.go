@@ -2,6 +2,10 @@ package film
 
 import (
 	"database/sql"
+	"fmt"
+	"log/slog"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 )
 
 type IFilmsRepo interface {
@@ -13,8 +17,23 @@ type RepoPostgre struct {
 	DB *sql.DB
 }
 
-func NewPostgreRepository(db *sql.DB) *RepoPostgre {
-	return &RepoPostgre{DB: db}
+func GetFilmRepo(config configs.DbDsnCfg, lg *slog.Logger) IFilmsRepo {
+	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
+		config.User, config.DbName, config.Password, config.Host, config.Port, config.Sslmode)
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		lg.Error("sql open error", "err", err.Error())
+		return nil
+	}
+	err = db.Ping()
+	if err != nil {
+		lg.Error("sql ping error", "err", err.Error())
+		return nil
+	}
+	db.SetMaxOpenConns(config.MaxOpenConns)
+
+	postgreDb := RepoPostgre{DB: db}
+	return &postgreDb
 }
 
 func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint32, end uint32) ([]FilmItem, error) {

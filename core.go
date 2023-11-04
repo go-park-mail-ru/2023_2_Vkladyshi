@@ -7,16 +7,15 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
-	profile "github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/user"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 )
 
 type Core struct {
-	sessions    map[string]Session
-	collections map[string]string
-	Mutex       sync.RWMutex
-	lg          *slog.Logger
-	Films       film.IFilmsRepo
-	Users       profile.IUserRepo
+	sessions map[string]Session
+	Mutex    sync.RWMutex
+	lg       *slog.Logger
+	Films    film.IFilmsRepo
+	Users    profile.IUserRepo
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
