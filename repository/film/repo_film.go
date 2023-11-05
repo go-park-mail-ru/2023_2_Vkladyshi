@@ -40,11 +40,11 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint32, end uint32)
 	films := make([]FilmItem, 0, end-start)
 
 	rows, err := repo.DB.Query(
-		"SELECT film.id, film.title, poster FROM film"+
-			"JOIN films_genre ON film.id = films_genre.id_film"+
-			"JOIN genre ON films_genre.id_genre = genre.id"+
-			"WHERE genre.title = $1'"+
-			"ORDER BY release_date DESC"+
+		"SELECT film.id, film.title, poster FROM film "+
+			"JOIN films_genre ON film.id = films_genre.id_film "+
+			"JOIN genre ON films_genre.id_genre = genre.id "+
+			"WHERE genre.title = $1' "+
+			"ORDER BY release_date DESC "+
 			"OFFSET $2 LIMIT $3",
 		genre, start, end)
 	if err != nil && err != sql.ErrNoRows {
@@ -68,8 +68,8 @@ func (repo *RepoPostgre) GetFilms(start uint32, end uint32) ([]FilmItem, error) 
 	films := make([]FilmItem, 0, end-start)
 
 	rows, err := repo.DB.Query(
-		"SELECT film.id, film.title, poster FROM film"+
-			"ORDER BY release_date DESC"+
+		"SELECT film.id, film.title, poster FROM film "+
+			"ORDER BY release_date DESC "+
 			"OFFSET $2 LIMIT $3",
 		start, end)
 	if err != nil && err != sql.ErrNoRows {

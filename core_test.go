@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 )
 
@@ -184,6 +185,45 @@ func TestCreateUser(t *testing.T) {
 	}
 	if err == nil {
 		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestGetFilmsByGenre(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Id", "Title", "Poster"})
+
+	expect := []film.FilmItem{
+		{Id: 1, Title: "t1", Poster: "url1"},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Id, item.Title, item.Poster)
+	}
+
+	mock.ExpectQuery("SELECT film.id, film.title, poster FROM film JOIN").WithArgs("g1", 1, 2).WillReturnRows(rows)
+
+	repo := &film.RepoPostgre{
+		DB: db,
+	}
+
+	films, err := repo.GetFilmsByGenre("g1", 1, 2)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !reflect.DeepEqual(films, expect) {
+		t.Errorf("results not match, want %v, have %v", expect, films)
 		return
 	}
 }
