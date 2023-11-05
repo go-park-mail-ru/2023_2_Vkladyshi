@@ -8,4 +8,5 @@ type UserItem struct {
 	Login            string
 	Password         string
 	RegistrationDate string
+	Email            string
 }

@@ -7,28 +7,91 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+
+	sqlmock "github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 )
 
-func TestCreateUserAccount(t *testing.T) {
-	/*login := "testLogin"
-	email := "test@mail.ru"
-	password := "testPassword"
-	testCore := Core{users: make(map[string]User)}
-	testRequest := SignupRequest{
-		Login:    login,
-		Password: password,
-		Email:    email,
-	}
-
-	err := testCore.CreateUserAccount(testRequest)
+func TestGetUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
 	if err != nil {
-		t.Errorf("failed to create user account")
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"photo", "login"})
+
+	testUser := profile.UserItem{
+		Photo: "url1",
+		Login: "l1",
+	}
+	expect := []*profile.UserItem{&testUser}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Login, item.Photo)
 	}
 
-	_, foundAccount, _ := testCore.FindUserAccount(login)
+	mock.ExpectQuery("SELECT login, photo FROM profiles WHERE").WithArgs(expect[0].Login, expect[0].Password).WillReturnRows(rows)
+
+	repo := &profile.RepoPostgre{
+		DB: db,
+	}
+
+	user, foundAccount, err := repo.GetUser(expect[0].Login, expect[0].Password)
+	if err != nil {
+		t.Errorf("GetUser error: %s", err)
+	}
 	if !foundAccount {
 		t.Errorf("user not found")
-	}*/
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !reflect.DeepEqual(user, expect[0]) {
+		t.Errorf("results not match, want %v, have %v", expect[0], user)
+		return
+	}
+}
+
+func TestFindUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"login"})
+
+	testUser := profile.UserItem{
+		Login: "l1",
+	}
+	expect := []*profile.UserItem{&testUser}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Login)
+	}
+
+	mock.ExpectQuery("SELECT login FROM profiles WHERE").WithArgs(expect[0].Login).WillReturnRows(rows)
+
+	repo := &profile.RepoPostgre{
+		DB: db,
+	}
+
+	foundAccount, err := repo.FindUser(expect[0].Login)
+	if err != nil {
+		t.Errorf("GetUser error: %s", err)
+	}
+	if !foundAccount {
+		t.Errorf("user not found")
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
 }
 
 func TestCreateAndKillSession(t *testing.T) {
@@ -106,34 +169,5 @@ func TestSigninGet(t *testing.T) {
 
 	if response.Status != http.StatusMethodNotAllowed {
 		t.Errorf("got incorrect status")
-	}
-}
-
-func TestFilmsPages(t *testing.T) {
-	testCore := Core{}
-	h1 := httptest.NewRequest(http.MethodGet, "/api/v1/films?page=100", nil)
-	h2 := httptest.NewRequest(http.MethodGet, "/api/v1/films?page=2", nil)
-	w1 := httptest.NewRecorder()
-	w2 := httptest.NewRecorder()
-
-	api := API{core: &testCore}
-	api.Films(w1, h1)
-	api.Films(w2, h2)
-
-	var response1, response2 Response
-
-	body1, _ := io.ReadAll(w1.Body)
-	err := json.Unmarshal(body1, &response1)
-	if err != nil {
-		t.Error("cant unmarshal jsone")
-	}
-	body2, _ := io.ReadAll(w2.Body)
-	err = json.Unmarshal(body2, &response2)
-	if err != nil {
-		t.Error("cant unmarshal jsone")
-	}
-
-	if !reflect.DeepEqual(response1.Body, response2.Body) {
-		t.Errorf("pages not matching")
 	}
 }

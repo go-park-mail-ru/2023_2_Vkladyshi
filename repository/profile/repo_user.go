@@ -18,7 +18,7 @@ type RepoPostgre struct {
 	DB *sql.DB
 }
 
-func GetFilmRepo(config configs.DbDsnCfg, lg *slog.Logger) IUserRepo {
+func GetUserRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
 		config.User, config.DbName, config.Password, config.Host, config.Port, config.Sslmode)
 	db, err := sql.Open("pgx", dsn)
@@ -41,7 +41,7 @@ func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool
 	post := &UserItem{}
 
 	err := repo.DB.QueryRow(
-		"SELECT login, photo FROM profiles"+
+		"SELECT login, photo FROM profiles "+
 			"WHERE login = $1 AND password = $2", login, password).Scan(&post.Login, &post.Photo)
 	if err == sql.ErrNoRows {
 		return nil, false, nil
@@ -57,7 +57,7 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 	post := &UserItem{}
 
 	err := repo.DB.QueryRow(
-		"SELECT login FROM profiles"+
+		"SELECT login FROM profiles "+
 			"WHERE login = $1", login).Scan(&post.Login)
 	if err == sql.ErrNoRows {
 		return false, nil
@@ -71,7 +71,7 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 
 func (repo *RepoPostgre) CreateUser(login string, password string, name string, birthDate string, email string) error {
 	_, err := repo.DB.Exec(
-		"INSERT INTO profiles(name, birth_date, photo, login, password, email, registration_date)"+
+		"INSERT INTO profiles(name, birth_date, photo, login, password, email, registration_date) "+
 			"VALUES($1, $2, '../../user_avatars/default.jpg', $3, $4, $5, CURRENT_TIMESTAMP)",
 		name, birthDate, login, password, email)
 	if err != nil {

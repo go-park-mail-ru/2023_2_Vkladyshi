@@ -12,7 +12,7 @@ import (
 
 type Core struct {
 	sessions map[string]Session
-	Mutex    sync.RWMutex
+	mutex    sync.RWMutex
 	lg       *slog.Logger
 	Films    film.IFilmsRepo
 	Users    profile.IUserRepo
@@ -28,24 +28,24 @@ func (core *Core) CreateSession(login string) (string, Session, error) {
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
-	core.Mutex.Lock()
+	core.mutex.Lock()
 	core.sessions[SID] = session
-	core.Mutex.Unlock()
+	core.mutex.Unlock()
 
 	return SID, session, nil
 }
 
 func (core *Core) KillSession(sid string) error {
-	core.Mutex.Lock()
+	core.mutex.Lock()
 	delete(core.sessions, sid)
-	core.Mutex.Unlock()
+	core.mutex.Unlock()
 	return nil
 }
 
 func (core *Core) FindActiveSession(sid string) (bool, error) {
-	core.Mutex.RLock()
+	core.mutex.RLock()
 	_, found := core.sessions[sid]
-	core.Mutex.RUnlock()
+	core.mutex.RUnlock()
 	return found, nil
 }
 
