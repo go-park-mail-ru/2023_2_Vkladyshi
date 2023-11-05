@@ -62,7 +62,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		pageSize = 8
 	}
 
-	films := []film.FilmItem{}
+	var films []film.FilmItem
 	collectionId := r.URL.Query().Get("collection_id")
 	if collectionId == "" {
 		films = a.core.GetFilms(uint32(page*pageSize+1), uint32((page+1)*pageSize+1))
