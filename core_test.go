@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -54,6 +55,24 @@ func TestGetUser(t *testing.T) {
 		t.Errorf("results not match, want %v, have %v", expect[0], user)
 		return
 	}
+
+	mock.
+		ExpectQuery("SELECT login, photo FROM profiles WHERE").
+		WithArgs(expect[0].Login, expect[0].Password).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	_, found, err := repo.GetUser(expect[0].Login, expect[0].Password)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if found {
+		t.Errorf("expected not found")
+	}
 }
 
 func TestFindUser(t *testing.T) {
@@ -90,6 +109,81 @@ func TestFindUser(t *testing.T) {
 
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.
+		ExpectQuery("SELECT login FROM profiles WHERE").
+		WithArgs(expect[0].Login).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	found, err := repo.FindUser(expect[0].Login)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if found {
+		t.Errorf("expected not found")
+	}
+}
+
+func TestCreateUser(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"login"})
+
+	testUser := profile.UserItem{
+		Login:     "l1",
+		Password:  "p1",
+		Birthdate: "2003-10-08",
+		Name:      "n1",
+		Email:     "e1",
+	}
+	expect := []*profile.UserItem{&testUser}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Login)
+	}
+
+	mock.
+		ExpectExec("INSERT INTO profiles").
+		WithArgs(testUser.Name, testUser.Birthdate, testUser.Login, testUser.Password, testUser.Email).
+		WillReturnResult(sqlmock.NewResult(1, 1))
+
+	repo := &profile.RepoPostgre{
+		DB: db,
+	}
+
+	err = repo.CreateUser(testUser.Login, testUser.Password, testUser.Name, testUser.Birthdate, testUser.Email)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.
+		ExpectExec("INSERT INTO profiles").
+		WithArgs(testUser.Name, testUser.Birthdate, testUser.Login, testUser.Password, testUser.Email).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	err = repo.CreateUser(testUser.Login, testUser.Password, testUser.Name, testUser.Birthdate, testUser.Email)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
 		return
 	}
 }
