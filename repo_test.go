@@ -9,6 +9,7 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 )
 
@@ -624,6 +625,63 @@ func TestGetFilmCharacters(t *testing.T) {
 		return
 	}
 	if characters != nil {
+		t.Errorf("get comments error, comments should be nil")
+	}
+}
+
+func TestGetFilmGenres(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Id", "Title"})
+
+	expect := []genre.GenreItem{
+		{Id: 1, Title: "t1"},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Id, item.Title)
+	}
+
+	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+
+	repo := &genre.RepoPostgre{
+		DB: db,
+	}
+
+	genres, err := repo.GetFilmGenres(1)
+	if err != nil {
+		t.Errorf("GetFilm error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !reflect.DeepEqual(genres, expect) {
+		t.Errorf("results not match, want %v, have %v", expect, genres)
+		return
+	}
+
+	mock.
+		ExpectQuery("SELECT").
+		WithArgs(1).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	genres, err = repo.GetFilmGenres(1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if genres != nil {
 		t.Errorf("get comments error, comments should be nil")
 	}
 }
