@@ -6,6 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+
+	_ "github.com/jackc/pgx/stdlib"
 )
 
 type IFilmsRepo interface {
@@ -45,7 +47,7 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint64, end uint64)
 		"SELECT film.id, film.title, poster FROM film "+
 			"JOIN films_genre ON film.id = films_genre.id_film "+
 			"JOIN genre ON films_genre.id_genre = genre.id "+
-			"WHERE genre.title = $1' "+
+			"WHERE genre.title = $1 "+
 			"ORDER BY release_date DESC "+
 			"OFFSET $2 LIMIT $3",
 		genre, start, end)
