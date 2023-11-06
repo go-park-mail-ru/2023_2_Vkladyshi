@@ -261,4 +261,6 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		Comments:   comments,
 	}
 	response.Body = filmResponse
+
+	a.SendResponse(w, response)
 }
