@@ -97,7 +97,7 @@ func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]CrewItem, error) {
 }
 
 func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
-	var characters []Character
+	characters := []Character{}
 
 	rows, err := repo.DB.Query(
 		"SELECT crew.id, name, photo, person_in_film.character_name FROM crew "+
