@@ -11,6 +11,7 @@ import (
 type IFilmsRepo interface {
 	GetFilmsByGenre(genre string, start uint32, end uint32) ([]FilmItem, error)
 	GetFilms(start uint32, end uint32) ([]FilmItem, error)
+	PingDb() error
 }
 
 type RepoPostgre struct {
@@ -87,4 +88,11 @@ func (repo *RepoPostgre) GetFilms(start uint32, end uint32) ([]FilmItem, error) 
 	}
 
 	return films, nil
+}
+
+func (repo *RepoPostgre) PingDb() error {
+	err := repo.DB.Ping()
+	if err != nil {
+		return err
+	}
 }

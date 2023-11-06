@@ -98,3 +98,20 @@ func (core *Core) GetFilms(start uint32, end uint32) []film.FilmItem {
 
 	return films
 }
+
+func (core *Core) PingRepos(timer uint32) {
+	for {
+		err := core.Users.PingDb()
+		if err != nil {
+			core.lg.Error("Ping User repo error", "err", err.Error())
+			return
+		}
+		err = core.Films.PingDb()
+		if err != nil {
+			core.lg.Error("Ping Film repo error", "err", err.Error())
+			return
+		}
+
+		time.Sleep(time.Duration(timer) * time.Second)
+	}
+}

@@ -29,6 +29,8 @@ func main() {
 	}
 	api := API{core: &core, lg: lg.With("module", "api")}
 
+	go core.PingRepos(config.Timer)
+
 	mx := http.NewServeMux()
 	mx.HandleFunc("/signup", api.Signup)
 	mx.HandleFunc("/signin", api.Signin)
