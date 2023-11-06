@@ -104,7 +104,7 @@ func (repo *RepoPostgre) PingDb() error {
 func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {
 	film := &FilmItem{}
 	err := repo.DB.QueryRow(
-		"SELECT * FORM film "+
+		"SELECT * FROM film "+
 			"WHERE id = $1", filmId).
 		Scan(&film.Id, &film.Title, &film.Info, &film.Poster, &film.ReleaseDate, &film.Country, &film.Mpaa)
 	if err == sql.ErrNoRows {
