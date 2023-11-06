@@ -72,7 +72,7 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) 
 	rows, err := repo.DB.Query(
 		"SELECT film.id, film.title, poster FROM film "+
 			"ORDER BY release_date DESC "+
-			"OFFSET $2 LIMIT $3",
+			"OFFSET $1 LIMIT $2",
 		start, end)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
@@ -100,10 +100,10 @@ func (repo *RepoPostgre) PingDb() error {
 }
 
 func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {
-	var film *FilmItem
+	film := &FilmItem{}
 	err := repo.DB.QueryRow(
 		"SELECT * FORM film "+
-			"WHERE id = &1", filmId).
+			"WHERE id = $1", filmId).
 		Scan(&film.Id, &film.Title, &film.Info, &film.Poster, &film.ReleaseDate, &film.Country, &film.Mpaa)
 	if err == sql.ErrNoRows {
 		return nil, nil
