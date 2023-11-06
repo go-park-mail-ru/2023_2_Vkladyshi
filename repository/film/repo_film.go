@@ -9,8 +9,9 @@ import (
 )
 
 type IFilmsRepo interface {
-	GetFilmsByGenre(genre string, start uint32, end uint32) ([]FilmItem, error)
-	GetFilms(start uint32, end uint32) ([]FilmItem, error)
+	GetFilmsByGenre(genre string, start uint64, end uint64) ([]FilmItem, error)
+	GetFilms(start uint64, end uint64) ([]FilmItem, error)
+	GetFilm(filmId uint64) (*FilmItem, error)
 	PingDb() error
 }
 
@@ -37,7 +38,7 @@ func GetFilmRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	return &postgreDb
 }
 
-func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint32, end uint32) ([]FilmItem, error) {
+func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint64, end uint64) ([]FilmItem, error) {
 	films := make([]FilmItem, 0, end-start)
 
 	rows, err := repo.DB.Query(
@@ -65,7 +66,7 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint32, end uint32)
 	return films, nil
 }
 
-func (repo *RepoPostgre) GetFilms(start uint32, end uint32) ([]FilmItem, error) {
+func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) {
 	films := make([]FilmItem, 0, end-start)
 
 	rows, err := repo.DB.Query(
@@ -96,4 +97,20 @@ func (repo *RepoPostgre) PingDb() error {
 		return err
 	}
 	return nil
+}
+
+func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {
+	var film *FilmItem
+	err := repo.DB.QueryRow(
+		"SELECT * FORM film "+
+			"WHERE id = &1", filmId).
+		Scan(&film.Id, &film.Title, &film.Info, &film.Poster, &film.ReleaseDate, &film.Country, &film.Mpaa)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return film, nil
 }
