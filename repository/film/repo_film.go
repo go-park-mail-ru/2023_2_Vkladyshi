@@ -95,4 +95,5 @@ func (repo *RepoPostgre) PingDb() error {
 	if err != nil {
 		return err
 	}
+	return nil
 }
