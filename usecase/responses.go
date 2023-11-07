@@ -16,10 +16,10 @@ type FilmsResponse struct {
 
 type FilmResponse struct {
 	Film       film.FilmItem     `json:"film"`
-	Genres     []genre.GenreItem `json:"genres"`
+	Genres     []genre.GenreItem `json:"genre"`
 	Rating     float64           `json:"rating"`
 	Number     uint64            `json:"number"`
 	Directors  []crew.CrewItem   `json:"directors"`
 	Scenarists []crew.CrewItem   `json:"scenarists"`
-	Characters []crew.Character  `json:"characters"`
+	Characters []crew.Character  `json:"actors"`
 }
