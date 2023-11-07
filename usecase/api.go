@@ -48,6 +48,11 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 	csrfToken := r.Header.Get("x-csrf-token")
 
 	found, err := a.core.CheckCsrfToken(csrfToken)
+	if err != nil {
+		w.Header().Set("X-CSRF-Token", "null")
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+	}
 	if csrfToken != "" && found {
 		w.Header().Set("X-CSRF-Token", csrfToken)
 		a.SendResponse(w, response)
@@ -58,7 +63,7 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
-		response.Status = 502
+		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 	}
 
