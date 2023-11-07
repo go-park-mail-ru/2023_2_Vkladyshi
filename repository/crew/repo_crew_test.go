@@ -3,6 +3,7 @@ package crew
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -25,7 +26,10 @@ func TestGetFilmDirectors(t *testing.T) {
 		rows = rows.AddRow(item.Id, item.Name, item.Photo)
 	}
 
-	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT crew.id, name, photo  FROM crew JOIN person_in_film ON crew.id = person_in_film.id_person WHERE id_film = $1 AND id_profession = (SELECT id FROM profession WHERE title = 'режиссёр')")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -46,8 +50,8 @@ func TestGetFilmDirectors(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT crew.id, name, photo  FROM crew JOIN person_in_film ON crew.id = person_in_film.id_person WHERE id_film = $1 AND id_profession = (SELECT id FROM profession WHERE title = 'режиссёр')")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
@@ -82,7 +86,10 @@ func TestGetFilmScenarists(t *testing.T) {
 		rows = rows.AddRow(item.Id, item.Name, item.Photo)
 	}
 
-	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT crew.id, name, photo  FROM crew JOIN person_in_film ON crew.id = person_in_film.id_person WHERE id_film = $1 AND id_profession = (SELECT id FROM profession WHERE title = 'сценарист')")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -103,8 +110,8 @@ func TestGetFilmScenarists(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT crew.id, name, photo  FROM crew JOIN person_in_film ON crew.id = person_in_film.id_person WHERE id_film = $1 AND id_profession = (SELECT id FROM profession WHERE title = 'сценарист')")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
@@ -139,7 +146,10 @@ func TestGetFilmCharacters(t *testing.T) {
 		rows = rows.AddRow(item.IdActor, item.NameActor, item.ActorPhoto, item.NameCharacter)
 	}
 
-	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT crew.id, name, photo, person_in_film.character_name FROM crew JOIN person_in_film ON crew.id = person_in_film.id_person WHERE id_film = $1 AND id_profession = (SELECT id FROM profession WHERE title = 'актёр')")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -160,8 +170,8 @@ func TestGetFilmCharacters(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT crew.id, name, photo, person_in_film.character_name FROM crew JOIN person_in_film ON crew.id = person_in_film.id_person WHERE id_film = $1 AND id_profession = (SELECT id FROM profession WHERE title = 'актёр')")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
@@ -196,7 +206,10 @@ func TestGetActor(t *testing.T) {
 		rows = rows.AddRow(item.Id, item.Name, item.Birthdate, item.Photo)
 	}
 
-	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT id, name, birth_date, photo FROM crew WHERE id = $1")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -217,8 +230,8 @@ func TestGetActor(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT id, name, birth_date, photo FROM crew WHERE id = $1")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 

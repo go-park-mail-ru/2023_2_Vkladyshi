@@ -3,6 +3,7 @@ package profession
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -25,7 +26,10 @@ func TestGetActorProfessions(t *testing.T) {
 		rows = rows.AddRow(item.Title)
 	}
 
-	mock.ExpectQuery("SELECT DISTINCT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT DISTINCT title FROM profession JOIN person_in_film ON profession.id = person_in_film.id_profession WHERE id_person = $1")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -46,8 +50,8 @@ func TestGetActorProfessions(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT DISTINCT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT DISTINCT title FROM profession JOIN person_in_film ON profession.id = person_in_film.id_profession WHERE id_person = $1")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 

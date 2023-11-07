@@ -3,6 +3,7 @@ package comment
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -22,7 +23,10 @@ func TestGetFilmRating(t *testing.T) {
 
 	rows = rows.AddRow(expectRating, expectAmount)
 
-	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT AVG(rating), COUNT(rating) FROM users_comment WHERE id_film")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -46,8 +50,8 @@ func TestGetFilmRating(t *testing.T) {
 		t.Errorf("results not match, want %v, have %v", expectAmount, number)
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT AVG(rating), COUNT(rating) FROM users_comment WHERE id_film")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
@@ -85,7 +89,10 @@ func TestGetFilmComments(t *testing.T) {
 		rows = rows.AddRow(item.Username, item.Rating, item.Comment)
 	}
 
-	mock.ExpectQuery("SELECT").WithArgs(1, 0, 5).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT profile.login, rating, comment FROM users_comment JOIN profile ON users_comment.id_user = profile.id WHERE id_film = $1 OFFSET $2 LIMIT $3")).
+		WithArgs(1, 0, 5).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -106,8 +113,8 @@ func TestGetFilmComments(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT profile.login, rating, comment FROM users_comment JOIN profile ON users_comment.id_user = profile.id WHERE id_film = $1 OFFSET $2 LIMIT $3")).
 		WithArgs(1, 0, 5).
 		WillReturnError(fmt.Errorf("db_error"))
 

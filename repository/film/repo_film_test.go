@@ -3,6 +3,7 @@ package film
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
@@ -133,7 +134,10 @@ func TestGetFilm(t *testing.T) {
 		rows = rows.AddRow(item.Id, item.Title, item.Info, item.Poster, item.ReleaseDate, item.Country, item.Mpaa)
 	}
 
-	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT * FROM film WHERE id = $1")).
+		WithArgs(1).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		DB: db,
@@ -154,8 +158,8 @@ func TestGetFilm(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT").
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT * FROM film WHERE id = $1")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 

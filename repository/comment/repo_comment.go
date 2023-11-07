@@ -52,7 +52,7 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	var rating float64
 	var number uint64
 	err := repo.DB.QueryRow(
-		"SELECT AVG(rating), COUNT(rating) FROM user_comment "+
+		"SELECT AVG(rating), COUNT(rating) FROM users_comment "+
 			"WHERE id_film = $1", filmId).Scan(&rating, &number)
 	if err == sql.ErrNoRows {
 		return 0, 0, nil
@@ -70,7 +70,7 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 	rows, err := repo.DB.Query(
 		"SELECT profile.login, rating, comment FROM users_comment "+
 			"JOIN profile ON users_comment.id_user = profile.id "+
-			"WHERE id_film = $1"+
+			"WHERE id_film = $1 "+
 			"OFFSET $2 LIMIT $3", filmId, first, limit)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err

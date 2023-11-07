@@ -138,37 +138,37 @@ func (core *Core) GetFilms(start uint64, end uint64) ([]film.FilmItem, error) {
 	return films, nil
 }
 
-func (core *Core) PingRepos(timer uint32) error {
+func (core *Core) PingRepos(timer uint32) {
 	for {
 		err := core.Users.PingDb()
 		if err != nil {
 			core.lg.Error("Ping User repo error", "err", err.Error())
-			return err
+			return
 		}
 		err = core.Films.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Film repo error", "err", err.Error())
-			return err
+			return
 		}
 		err = core.Genres.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Genre repo error", "err", err.Error())
-			return err
+			return
 		}
 		err = core.Comments.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Comment repo error", "err", err.Error())
-			return err
+			return
 		}
 		err = core.Comments.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Crew repo error", "err", err.Error())
-			return err
+			return
 		}
 		err = core.Profession.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Profession repo error", "err", err.Error())
-			return err
+			return
 		}
 
 		time.Sleep(time.Duration(timer) * time.Second)
