@@ -32,7 +32,7 @@ func TestGetFilmsByGenre(t *testing.T) {
 		db: db,
 	}
 
-	films, err := repo.GetFilmsByGenre("g1", 1, 2)
+	films, err := repo.GetFilmsByGenre(1, 1, 2)
 	if err != nil {
 		t.Errorf("GetFilmsByGenre error: %s", err)
 	}
@@ -52,7 +52,7 @@ func TestGetFilmsByGenre(t *testing.T) {
 		WithArgs("g3", 1, 2).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	_, err = repo.GetFilmsByGenre("g3", 1, 2)
+	_, err = repo.GetFilmsByGenre(1, 1, 2)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return

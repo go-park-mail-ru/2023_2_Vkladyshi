@@ -14,6 +14,7 @@ import (
 
 type IGenreRepo interface {
 	GetFilmGenres(filmId uint64) ([]GenreItem, error)
+	GetGenreById(genreId uint64) (string, error)
 }
 
 type RepoPostgre struct {
@@ -72,4 +73,20 @@ func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]GenreItem, error) {
 	}
 
 	return genres, nil
+}
+
+func (repo *RepoPostgre) GetGenreById(genreId uint64) (string, error) {
+	var genre string
+
+	err := repo.db.QueryRow(
+		"SELECT title FROM genre "+
+			"WHERE id = $1", genreId).Scan(&genre)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil
+		}
+		return "", err
+	}
+
+	return genre, nil
 }

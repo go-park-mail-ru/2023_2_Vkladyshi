@@ -120,7 +120,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetFilmsByGenre(genre string, start uint64, end uint64) ([]film.FilmItem, error) {
+func (core *Core) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]film.FilmItem, error) {
 	films, err := core.films.GetFilmsByGenre(genre, start, end)
 	if err != nil {
 		core.lg.Error("failed to get films from db", "err", err.Error())
@@ -252,4 +252,14 @@ func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
 	}
 
 	return profile, nil
+}
+
+func (core *Core) GetGenre(genreId uint64) (string, error) {
+	genre, err := core.genres.GetGenreById(genreId)
+	if err != nil {
+		core.lg.Error("GetGenre error", "err", err.Error())
+		return "", fmt.Errorf("GetGenre err: %w", err)
+	}
+
+	return genre, nil
 }

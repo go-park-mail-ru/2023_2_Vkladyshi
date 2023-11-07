@@ -13,7 +13,7 @@ import (
 )
 
 type IFilmsRepo interface {
-	GetFilmsByGenre(genre string, start uint64, end uint64) ([]FilmItem, error)
+	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]FilmItem, error)
 	GetFilm(filmId uint64) (*FilmItem, error)
 }
@@ -52,14 +52,13 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	time.Sleep(time.Duration(timer) * time.Second)
 }
 
-func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint64, end uint64) ([]FilmItem, error) {
+func (repo *RepoPostgre) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]FilmItem, error) {
 	films := make([]FilmItem, 0, end-start)
 
 	rows, err := repo.db.Query(
 		"SELECT film.id, film.title, poster FROM film "+
 			"JOIN films_genre ON film.id = films_genre.id_film "+
-			"JOIN genre ON films_genre.id_genre = genre.id "+
-			"WHERE genre.title = $1 "+
+			"WHERE id_genre = $1 "+
 			"ORDER BY release_date DESC "+
 			"OFFSET $2 LIMIT $3",
 		genre, start, end)

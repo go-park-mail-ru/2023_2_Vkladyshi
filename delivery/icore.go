@@ -16,7 +16,7 @@ type ICore interface {
 	CreateUserAccount(login string, password string, name string, birthDate string, email string) error
 	FindUserAccount(login string, password string) (*profile.UserItem, bool, error)
 	FindUserByLogin(login string) (bool, error)
-	GetFilmsByGenre(genre string, start uint64, end uint64) ([]film.FilmItem, error)
+	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]film.FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]film.FilmItem, error)
 	GetFilm(filmId uint64) (*film.FilmItem, error)
 	GetFilmGenres(filmId uint64) ([]genre.GenreItem, error)
@@ -30,4 +30,5 @@ type ICore interface {
 	AddComment(filmId uint64, userLogin string, rating uint16, text string) error
 	GetUserName(sid string) (string, error)
 	GetUserProfile(login string) (*profile.UserItem, error)
+	GetGenre(genreId uint64) (string, error)
 }

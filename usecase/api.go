@@ -81,21 +81,28 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		pageSize = 8
 	}
 
+	genreId, err := strconv.ParseUint(r.URL.Query().Get("collection_id"), 10, 64)
+	if err != nil {
+		genreId = 0
+	}
+
 	var films []film.FilmItem
-	collectionId := r.URL.Query().Get("collection_id")
-	if collectionId == "" {
+
+	if genreId == 0 {
 		films, err = a.core.GetFilms(uint64((page-1)*pageSize), pageSize)
 	} else {
-		films, err = a.core.GetFilmsByGenre(collectionId, uint64((page-1)*pageSize), pageSize)
+		films, err = a.core.GetFilmsByGenre(genreId, uint64((page-1)*pageSize), pageSize)
 	}
 	if err != nil {
 		a.lg.Error("Films error", "err", err.Error())
 	}
+
+	genre, err := a.core.GetGenre(genreId)
 	filmsResponse := FilmsResponse{
 		Page:           page,
 		PageSize:       pageSize,
 		Total:          uint64(len(films)),
-		CollectionName: collectionId,
+		CollectionName: genre,
 		Films:          films,
 	}
 	response.Body = filmsResponse
@@ -208,6 +215,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
@@ -215,6 +223,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 
 	err = json.Unmarshal(body, &request)
 	if err != nil {
+		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
