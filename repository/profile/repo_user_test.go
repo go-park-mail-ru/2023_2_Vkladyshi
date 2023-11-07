@@ -181,5 +181,4 @@ func TestCreateUser(t *testing.T) {
 		t.Errorf("expected error, got nil")
 		return
 	}
-
 }

@@ -229,8 +229,8 @@ func (core *Core) GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, 
 	return career, nil
 }
 
-func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text string) (bool, error) {
-	err := core.comments.AddComment(filmId, userId, rating, text)
+func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, text string) (bool, error) {
+	err := core.comments.AddComment(filmId, userLogin, rating, text)
 	if err != nil {
 		core.lg.Error("Add Comment error", "err", err.Error())
 		return false, err
@@ -239,7 +239,7 @@ func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text s
 	return true, nil
 }
 
-func (core *Core) GetUsername(sessionValue string) (string, error) {
+func (core *Core) GetUserName(sid string) (string, error) {
 	return "", nil
 }
 

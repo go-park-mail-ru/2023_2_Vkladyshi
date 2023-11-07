@@ -14,7 +14,7 @@ import (
 type ICommentRepo interface {
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error)
-	AddComment(filmId uint64, userId uint64, rating uint16, text string) error
+	AddComment(filmId uint64, userId string, rating uint16, text string) error
 }
 
 type RepoPostgre struct {
@@ -92,10 +92,11 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 	return comments, nil
 }
 
-func (repo *RepoPostgre) AddComment(filmId uint64, userId uint64, rating uint16, text string) error {
+func (repo *RepoPostgre) AddComment(filmId uint64, userLogin string, rating uint16, text string) error {
 	_, err := repo.db.Exec(
-		"INSERT INTO users_comment(id_film, id_user, rating, comment) "+
-			"VALUES($1, $2, $3, $4) ", filmId, userId, rating, text)
+		"INSERT INTO users_comment(id_film, rating, comment, id_user) "+
+			"SELECT $1, $2, $3', profile.id FROM profile "+
+			"WHERE login = $4", filmId, rating, text, userLogin)
 	if err != nil {
 		return err
 	}

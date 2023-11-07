@@ -421,13 +421,37 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
-
-	found, _ := a.core.FindActiveSession(session.Value)
-	if !found {
-		response.Status = http.StatusUnauthorized
+	if err != nil {
+		a.lg.Error("Add comment error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
+
+	login, err := a.core.GetUserName(session.Value)
+	if err != nil {
+		a.lg.Error("Add comment error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+
+	var commentRequest CommentRequest
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+
+	if err = json.Unmarshal(body, &commentRequest); err != nil {
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+
+	a.core.AddComment(commentRequest.FilmId, login, commentRequest.Rating, commentRequest.Text)
 }
 
 func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
@@ -440,7 +464,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		login, err := a.core.GetUsername(session.Value)
+		login, err := a.core.GetUserName(session.Value)
 		if err != nil {
 			a.lg.Error("Get Profile error", "err", err.Error())
 		}
