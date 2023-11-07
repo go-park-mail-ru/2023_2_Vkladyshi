@@ -2,6 +2,7 @@ package profession
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -54,8 +55,8 @@ func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]ProfessionItem,
 		"SELECT DISTINCT title FROM profession "+
 			"JOIN person_in_film ON profession.id = person_in_film.id_profession "+
 			"WHERE id_person = $1", actorId)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("GetActorsProfessions err: %w", err)
 	}
 	defer rows.Close()
 
@@ -63,7 +64,7 @@ func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]ProfessionItem,
 		post := ProfessionItem{}
 		err := rows.Scan(&post.Title)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetActorsProfessions scan err: %w", err)
 		}
 		professions = append(professions, post)
 	}

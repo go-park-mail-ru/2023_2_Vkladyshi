@@ -2,6 +2,7 @@ package genre
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -50,14 +51,14 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 }
 
 func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]GenreItem, error) {
-	var genres []GenreItem
+	genres := []GenreItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT genre.id, genre.title FROM genre "+
 			"JOIN films_genre ON genre.id = films_genre.id_genre "+
 			"WHERE films_genre.id_film = $1", filmId)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("GetFilmGenres err: %w", err)
 	}
 	defer rows.Close()
 
@@ -65,7 +66,7 @@ func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]GenreItem, error) {
 		post := GenreItem{}
 		err := rows.Scan(&post.Id, &post.Title)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetFilmGenres scan err: %w", err)
 		}
 		genres = append(genres, post)
 	}

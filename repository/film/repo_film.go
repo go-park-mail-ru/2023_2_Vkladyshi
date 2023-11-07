@@ -2,6 +2,7 @@ package film
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -62,8 +63,8 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint64, end uint64)
 			"ORDER BY release_date DESC "+
 			"OFFSET $2 LIMIT $3",
 		genre, start, end)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("GetFilmsByGenre err: %w", err)
 	}
 	defer rows.Close()
 
@@ -71,7 +72,7 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint64, end uint64)
 		post := FilmItem{}
 		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetFilmsByGenre scan err: %w", err)
 		}
 		films = append(films, post)
 	}
@@ -87,8 +88,8 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) 
 			"ORDER BY release_date DESC "+
 			"OFFSET $1 LIMIT $2",
 		start, end)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("GetFilms err: %w", err)
 	}
 	defer rows.Close()
 
@@ -96,7 +97,7 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) 
 		post := FilmItem{}
 		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetFilms scan err: %w", err)
 		}
 		films = append(films, post)
 	}
@@ -110,11 +111,12 @@ func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {
 		"SELECT * FROM film "+
 			"WHERE id = $1", filmId).
 		Scan(&film.Id, &film.Title, &film.Info, &film.Poster, &film.ReleaseDate, &film.Country, &film.Mpaa)
-	if err == sql.ErrNoRows {
-		return nil, nil
-	}
 	if err != nil {
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return film, nil
+		}
+
+		return nil, fmt.Errorf("GetFilm err: %w", err)
 	}
 
 	return film, nil

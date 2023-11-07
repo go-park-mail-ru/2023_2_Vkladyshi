@@ -2,6 +2,7 @@ package comment
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -57,26 +58,26 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	err := repo.db.QueryRow(
 		"SELECT AVG(rating), COUNT(rating) FROM users_comment "+
 			"WHERE id_film = $1", filmId).Scan(&rating, &number)
-	if err == sql.ErrNoRows {
-		return 0, 0, nil
-	}
 	if err != nil {
-		return 0, 0, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("GetFilmRating err: %w", err)
 	}
 
 	return rating, number, nil
 }
 
 func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error) {
-	var comments []CommentItem
+	comments := []CommentItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT profile.login, rating, comment FROM users_comment "+
 			"JOIN profile ON users_comment.id_user = profile.id "+
 			"WHERE id_film = $1 "+
 			"OFFSET $2 LIMIT $3", filmId, first, limit)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("GetFilmRating err: %w", err)
 	}
 	defer rows.Close()
 
@@ -84,7 +85,7 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 		post := CommentItem{}
 		err := rows.Scan(&post.Username, &post.Rating, &post.Comment)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("GetFilmRating scan err: %w", err)
 		}
 		comments = append(comments, post)
 	}
@@ -98,7 +99,7 @@ func (repo *RepoPostgre) AddComment(filmId uint64, userLogin string, rating uint
 			"SELECT $1, $2, $3', profile.id FROM profile "+
 			"WHERE login = $4", filmId, rating, text, userLogin)
 	if err != nil {
-		return err
+		return fmt.Errorf("AddComment: %w", err)
 	}
 
 	return nil

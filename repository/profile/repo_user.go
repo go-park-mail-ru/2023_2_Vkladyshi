@@ -2,6 +2,7 @@ package profile
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -58,11 +59,11 @@ func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool
 	err := repo.db.QueryRow(
 		"SELECT login, photo FROM profile "+
 			"WHERE login = $1 AND password = $2", login, password).Scan(&post.Login, &post.Photo)
-	if err == sql.ErrNoRows {
-		return nil, false, nil
-	}
 	if err != nil {
-		return nil, false, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("GetUser err: %w", err)
 	}
 
 	return post, true, nil
@@ -74,11 +75,11 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 	err := repo.db.QueryRow(
 		"SELECT login FROM profile "+
 			"WHERE login = $1", login).Scan(&post.Login)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
 	if err != nil {
-		return false, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("FindUser err: %w", err)
 	}
 
 	return true, nil
@@ -90,7 +91,7 @@ func (repo *RepoPostgre) CreateUser(login string, password string, name string, 
 			"VALUES($1, $2, '../../user_avatars/default.jpg', $3, $4, $5, CURRENT_TIMESTAMP)",
 		name, birthDate, login, password, email)
 	if err != nil {
-		return err
+		return fmt.Errorf("CreateUser err: %w", err)
 	}
 
 	return nil
@@ -103,7 +104,7 @@ func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
 		"SELECT name, birth_date, login, email, photo FROM profile "+
 			"WHERE login = $1", login).Scan(&post.Name, &post.Birthdate, &post.Login, &post.Email, &post.Photo)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GetUserProfile err: %w", err)
 	}
 
 	return post, nil
