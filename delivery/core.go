@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
@@ -80,7 +81,7 @@ func (core *Core) FindActiveSession(sid string) (bool, error) {
 
 func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
 	if matched, _ := regexp.MatchString(`^\w@\w$`, email); !matched {
-		return InvalideEmail
+		return errors.InvalideEmail
 	}
 	err := core.Users.CreateUser(login, password, name, birthDate, email)
 	if err != nil {

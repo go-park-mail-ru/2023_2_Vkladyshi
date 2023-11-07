@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 )
 
@@ -206,7 +207,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
-	if err == delivery.InvalideEmail {
+	if err == errors.InvalideEmail {
 		a.lg.Error("create user error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 	}
