@@ -178,3 +178,60 @@ func TestGetFilmCharacters(t *testing.T) {
 		t.Errorf("get comments error, comments should be nil")
 	}
 }
+
+func TestGetActor(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Id", "Name", "Birthdate", "Photo"})
+
+	expect := []CrewItem{
+		{Id: 1, Name: "n1", Birthdate: "2003", Photo: "p1"},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Id, item.Name, item.Birthdate, item.Photo)
+	}
+
+	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
+
+	repo := &RepoPostgre{
+		DB: db,
+	}
+
+	actor, err := repo.GetActor(1)
+	if err != nil {
+		t.Errorf("GetFilm error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !reflect.DeepEqual(actor, &expect[0]) {
+		t.Errorf("results not match, want %v, have %v", &expect[0], actor)
+		return
+	}
+
+	mock.
+		ExpectQuery("SELECT").
+		WithArgs(1).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	actor, err = repo.GetActor(1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if actor != nil {
+		t.Errorf("get comments error, comments should be nil")
+	}
+}
