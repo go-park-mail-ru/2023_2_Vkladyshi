@@ -238,3 +238,19 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	a.SendResponse(w, response)
 }
+
+func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+
+	actorId, err := strconv.ParseUint(r.URL.Query().Get("actor_id"), 10, 64)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+}

@@ -5,6 +5,8 @@ type CrewItem struct {
 	Name      string `json:"name"`
 	Birthdate string `json:"birth_date"`
 	Photo     string `json:"photo"`
+	Country   string `json:"country"`
+	Info      string `json:"info_text"`
 }
 
 type Character struct {
