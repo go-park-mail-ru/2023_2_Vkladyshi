@@ -3,6 +3,7 @@ package delivery
 import (
 	"log/slog"
 	"math/rand"
+	"regexp"
 	"sync"
 	"time"
 
@@ -77,28 +78,36 @@ func (core *Core) FindActiveSession(sid string) (bool, error) {
 	return found, nil
 }
 
-func (core *Core) CreateUserAccount(request SignupRequest) {
-	err := core.Users.CreateUser(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
+func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
+	if matched, _ := regexp.MatchString(`^\w@\w$`, email); !matched {
+		return InvalideEmail
+	}
+	err := core.Users.CreateUser(login, password, name, birthDate, email)
 	if err != nil {
 		core.lg.Error("create user error", "err", err.Error())
+		return err
 	}
+
+	return nil
 }
 
-func (core *Core) FindUserAccount(login string, password string) (*profile.UserItem, bool) {
+func (core *Core) FindUserAccount(login string, password string) (*profile.UserItem, bool, error) {
 	user, found, err := core.Users.GetUser(login, password)
 	if err != nil {
 		core.lg.Error("find user error", "err", err.Error())
+		return nil, false, err
 	}
-	return user, found
+	return user, found, nil
 }
 
-func (core *Core) FindUserByLogin(login string) bool {
+func (core *Core) FindUserByLogin(login string) (bool, error) {
 	found, err := core.Users.FindUser(login)
 	if err != nil {
 		core.lg.Error("find user error", "err", err.Error())
+		return false, err
 	}
 
-	return found
+	return found, nil
 }
 
 func RandStringRunes(seed int) string {
@@ -109,148 +118,159 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetFilmsByGenre(genre string, start uint64, end uint64) []film.FilmItem {
+func (core *Core) GetFilmsByGenre(genre string, start uint64, end uint64) ([]film.FilmItem, error) {
 	films, err := core.Films.GetFilmsByGenre(genre, start, end)
 	if err != nil {
 		core.lg.Error("failed to get films from db", "err", err.Error())
+		return nil, err
 	}
 
-	return films
+	return films, nil
 }
 
-func (core *Core) GetFilms(start uint64, end uint64) []film.FilmItem {
+func (core *Core) GetFilms(start uint64, end uint64) ([]film.FilmItem, error) {
 	films, err := core.Films.GetFilms(start, end)
 	if err != nil {
 		core.lg.Error("failed to get films from db", "err", err.Error())
+		return nil, err
 	}
 
-	return films
+	return films, nil
 }
 
-func (core *Core) PingRepos(timer uint32) {
+func (core *Core) PingRepos(timer uint32) error {
 	for {
 		err := core.Users.PingDb()
 		if err != nil {
 			core.lg.Error("Ping User repo error", "err", err.Error())
-			return
+			return err
 		}
 		err = core.Films.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Film repo error", "err", err.Error())
-			return
+			return err
 		}
 		err = core.Genres.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Genre repo error", "err", err.Error())
-			return
+			return err
 		}
 		err = core.Comments.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Comment repo error", "err", err.Error())
-			return
+			return err
 		}
 		err = core.Comments.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Crew repo error", "err", err.Error())
-			return
+			return err
 		}
 		err = core.Profession.PingDb()
 		if err != nil {
 			core.lg.Error("Ping Profession repo error", "err", err.Error())
-			return
+			return err
 		}
 
 		time.Sleep(time.Duration(timer) * time.Second)
 	}
 }
 
-func (core *Core) GetFilm(filmId uint64) *film.FilmItem {
+func (core *Core) GetFilm(filmId uint64) (*film.FilmItem, error) {
 	film, err := core.Films.GetFilm(filmId)
 	if err != nil {
 		core.lg.Error("Get Film error", "err", err.Error())
+		return nil, err
 	}
 
-	return film
+	return film, nil
 }
 
-func (core *Core) GetFilmGenres(filmId uint64) []genre.GenreItem {
+func (core *Core) GetFilmGenres(filmId uint64) ([]genre.GenreItem, error) {
 	genres, err := core.Genres.GetFilmGenres(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Genres error", "err", err.Error())
+		return nil, err
 	}
 
-	return genres
+	return genres, nil
 }
 
-func (core *Core) GetFilmRating(filmId uint64) (float64, uint64) {
+func (core *Core) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	rating, number, err := core.Comments.GetFilmRating(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Rating error", "err", err.Error())
+		return 0, 0, err
 	}
 
-	return rating, number
+	return rating, number, nil
 }
 
-func (core *Core) GetFilmDirectors(filmId uint64) []crew.CrewItem {
+func (core *Core) GetFilmDirectors(filmId uint64) ([]crew.CrewItem, error) {
 	directors, err := core.Crew.GetFilmDirectors(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Directors error", "err", err.Error())
+		return nil, err
 	}
 
-	return directors
+	return directors, nil
 }
 
-func (core *Core) GetFilmScenarists(filmId uint64) []crew.CrewItem {
+func (core *Core) GetFilmScenarists(filmId uint64) ([]crew.CrewItem, error) {
 	scenarists, err := core.Crew.GetFilmScenarists(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Scenarists error", "err", err.Error())
+		return nil, err
 	}
 
-	return scenarists
+	return scenarists, nil
 }
 
-func (core *Core) GetFilmCharacters(filmId uint64) []crew.Character {
+func (core *Core) GetFilmCharacters(filmId uint64) ([]crew.Character, error) {
 	characters, err := core.Crew.GetFilmCharacters(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Characters error", "err", err.Error())
+		return nil, err
 	}
 
-	return characters
+	return characters, nil
 }
 
-func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) []comment.CommentItem {
+func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]comment.CommentItem, error) {
 	comments, err := core.Comments.GetFilmComments(filmId, first, limit)
 	if err != nil {
 		core.lg.Error("Get Film Comments error", "err", err.Error())
+		return nil, err
 	}
 
-	return comments
+	return comments, nil
 }
 
-func (core *Core) GetActor(actorId uint64) *crew.CrewItem {
+func (core *Core) GetActor(actorId uint64) (*crew.CrewItem, error) {
 	actor, err := core.Crew.GetActor(actorId)
 	if err != nil {
 		core.lg.Error("Get Actor error", "err", err.Error())
+		return nil, err
 	}
 
-	return actor
+	return actor, nil
 }
 
-func (core *Core) GetActorsCareer(actorId uint64) []profession.ProfessionItem {
+func (core *Core) GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error) {
 	career, err := core.Profession.GetActorsProfessions(actorId)
 	if err != nil {
 		core.lg.Error("Get Actors Career error", "err", err.Error())
+		return nil, err
 	}
 
-	return career
+	return career, nil
 }
 
-func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text string) bool {
+func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text string) (bool, error) {
 	err := core.Comments.AddComment(filmId, userId, rating, text)
 	if err != nil {
 		core.lg.Error("Add Comment error", "err", err.Error())
-		return false
+		return false, err
 	}
 
-	return true
+	return true, nil
 }

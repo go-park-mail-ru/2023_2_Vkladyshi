@@ -21,7 +21,7 @@ func GetApi(c *delivery.Core, l *slog.Logger) *API {
 	return &API{core: c, lg: l.With("module", "api")}
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response delivery.Response) {
+func (a *API) SendResponse(w http.ResponseWriter, response Response) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -37,7 +37,7 @@ func (a *API) SendResponse(w http.ResponseWriter, response delivery.Response) {
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
@@ -57,9 +57,12 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	var films []film.FilmItem
 	collectionId := r.URL.Query().Get("collection_id")
 	if collectionId == "" {
-		films = a.core.GetFilms(uint64((page-1)*pageSize), pageSize)
+		films, err = a.core.GetFilms(uint64((page-1)*pageSize), pageSize)
 	} else {
-		films = a.core.GetFilmsByGenre(collectionId, uint64((page-1)*pageSize), pageSize)
+		films, err = a.core.GetFilmsByGenre(collectionId, uint64((page-1)*pageSize), pageSize)
+	}
+	if err != nil {
+		a.lg.Error("Films error", "err", err.Error())
 	}
 	filmsResponse := FilmsResponse{
 		Page:           page,
@@ -74,7 +77,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
@@ -101,7 +104,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 	var authorized bool
 
 	session, err := r.Cookie("session_id")
@@ -119,13 +122,13 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
-	var request delivery.SigninRequest
+	var request SigninRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -140,7 +143,13 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, found := a.core.FindUserAccount(request.Login, request.Password)
+	user, found, err := a.core.FindUserAccount(request.Login, request.Password)
+	if err != nil {
+		a.lg.Error("Signin error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 	if !found {
 		response.Status = http.StatusUnauthorized
 		a.SendResponse(w, response)
@@ -161,14 +170,14 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
 
-	var request delivery.SignupRequest
+	var request SignupRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -184,23 +193,33 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found := a.core.FindUserByLogin(request.Login)
+	found, err := a.core.FindUserByLogin(request.Login)
+	if err != nil {
+		a.lg.Error("Signup error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 	if found {
 		response.Status = http.StatusConflict
 		a.SendResponse(w, response)
 		return
-	} else {
-		a.core.CreateUserAccount(request)
-		if err != nil {
-			a.lg.Error("failed to create user account", "err", err.Error())
-		}
+	}
+	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
+	if err == delivery.InvalideEmail {
+		a.lg.Error("create user error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+	}
+	if err != nil {
+		a.lg.Error("failed to create user account", "err", err.Error())
+		response.Status = http.StatusBadRequest
 	}
 
 	a.SendResponse(w, response)
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -214,17 +233,53 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	film := a.core.GetFilm(filmId)
+	film, err := a.core.GetFilm(filmId)
+	if err != nil {
+		a.lg.Error("Film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 	if film == nil {
 		response.Status = http.StatusNotFound
 		a.SendResponse(w, response)
 		return
 	}
-	genres := a.core.GetFilmGenres(filmId)
-	rating, number := a.core.GetFilmRating(filmId)
-	directors := a.core.GetFilmDirectors(filmId)
-	scenarists := a.core.GetFilmScenarists(filmId)
-	characters := a.core.GetFilmCharacters(filmId)
+	genres, err := a.core.GetFilmGenres(filmId)
+	if err != nil {
+		a.lg.Error("Film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+	rating, number, err := a.core.GetFilmRating(filmId)
+	if err != nil {
+		a.lg.Error("Film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+	directors, err := a.core.GetFilmDirectors(filmId)
+	if err != nil {
+		a.lg.Error("Film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+	scenarists, err := a.core.GetFilmScenarists(filmId)
+	if err != nil {
+		a.lg.Error("Film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+	characters, err := a.core.GetFilmCharacters(filmId)
+	if err != nil {
+		a.lg.Error("Film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 
 	filmResponse := FilmResponse{
 		Film:       *film,
@@ -241,7 +296,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -255,13 +310,25 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actor := a.core.GetActor(actorId)
+	actor, err := a.core.GetActor(actorId)
+	if err != nil {
+		a.lg.Error("Actor error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 	if actor == nil {
 		response.Status = http.StatusNotFound
 		a.SendResponse(w, response)
 		return
 	}
-	career := a.core.GetActorsCareer(actorId)
+	career, err := a.core.GetActorsCareer(actorId)
+	if err != nil {
+		a.lg.Error("Actor error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 
 	actorResponse := ActorResponse{
 		Name:      actor.Name,
@@ -277,7 +344,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
-	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	response := Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -299,7 +366,13 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 		pageSize = 10
 	}
 
-	comments := a.core.GetFilmComments(filmId, (page-1)*pageSize, pageSize)
+	comments, err := a.core.GetFilmComments(filmId, (page-1)*pageSize, pageSize)
+	if err != nil {
+		a.lg.Error("Comment", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 
 	commentsResponse := CommentResponse{Comments: comments}
 

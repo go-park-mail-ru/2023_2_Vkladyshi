@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery"
 )
 
 func TestFilmsPost(t *testing.T) {
@@ -16,7 +14,7 @@ func TestFilmsPost(t *testing.T) {
 
 	api := API{}
 	api.Films(w, h)
-	var response delivery.Response
+	var response Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)
@@ -35,7 +33,7 @@ func TestSignupGet(t *testing.T) {
 
 	api := API{}
 	api.Signup(w, h)
-	var response delivery.Response
+	var response Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)
@@ -54,7 +52,7 @@ func TestSigninGet(t *testing.T) {
 
 	api := API{}
 	api.Signin(w, h)
-	var response delivery.Response
+	var response Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)

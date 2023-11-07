@@ -1,4 +1,4 @@
-package delivery
+package usecase
 
 type SignupRequest struct {
 	Login     string `json:"login"`
