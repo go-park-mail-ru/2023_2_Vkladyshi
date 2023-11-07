@@ -95,9 +95,18 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		a.lg.Error("Films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
 	}
 
 	genre, err := a.core.GetGenre(genreId)
+	if err != nil {
+		a.lg.Error("Films get genre error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
 	filmsResponse := FilmsResponse{
 		Page:           page,
 		PageSize:       pageSize,
