@@ -15,6 +15,7 @@ type IUserRepo interface {
 	GetUser(login string, password string) (*UserItem, bool, error)
 	FindUser(login string) (bool, error)
 	CreateUser(login string, password string, name string, birthDate string, email string) error
+	GetUserProfile(login string) (*UserItem, error)
 }
 
 type RepoPostgre struct {
@@ -93,4 +94,17 @@ func (repo *RepoPostgre) CreateUser(login string, password string, name string, 
 	}
 
 	return nil
+}
+
+func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
+	post := &UserItem{}
+
+	err := repo.DB.QueryRow(
+		"SELECT name, birth_date, login, email, photo FROM profile "+
+			"WHERE login = $1", login).Scan(&post.Name, &post.Birthdate, &post.Login, &post.Email, &post.Photo)
+	if err != nil {
+		return nil, err
+	}
+
+	return post, nil
 }

@@ -238,3 +238,17 @@ func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text s
 
 	return true, nil
 }
+
+func (core *Core) GetUsername(sessionValue string) (string, error) {
+	return "", nil
+}
+
+func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
+	profile, err := core.Users.GetUserProfile(login)
+	if err != nil {
+		core.lg.Error("GetUserProfile error", "err", err.Error())
+		return nil, err
+	}
+
+	return profile, nil
+}

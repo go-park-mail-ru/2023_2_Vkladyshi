@@ -382,5 +382,66 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
+	response := Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodPost {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+
+	session, err := r.Cookie("session_id")
+	if err == http.ErrNoCookie {
+		response.Status = http.StatusUnauthorized
+		a.SendResponse(w, response)
+		return
+	}
+
+	found, _ := a.core.FindActiveSession(session.Value)
+	if !found {
+		response.Status = http.StatusUnauthorized
+		a.SendResponse(w, response)
+		return
+	}
+}
+
+func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
+	response := Response{Status: http.StatusOK, Body: nil}
+	if r.Method == http.MethodGet {
+		session, err := r.Cookie("session_id")
+		if err == http.ErrNoCookie {
+			response.Status = http.StatusUnauthorized
+			a.SendResponse(w, response)
+			return
+		}
+
+		login, err := a.core.GetUsername(session.Value)
+		if err != nil {
+			a.lg.Error("Get Profile error", "err", err.Error())
+		}
+
+		profile, err := a.core.GetUserProfile(login)
+		if err != nil {
+			response.Status = http.StatusInternalServerError
+			a.SendResponse(w, response)
+			return
+		}
+
+		profileResponse := ProfileResponse{
+			Email:     profile.Email,
+			Name:      profile.Name,
+			Login:     profile.Login,
+			Photo:     profile.Photo,
+			BirthDate: profile.Birthdate,
+		}
+
+		response.Body = profileResponse
+		a.SendResponse(w, response)
+		return
+	}
+	if r.Method != http.MethodPost {
+		response.Status = http.StatusUnauthorized
+		a.SendResponse(w, response)
+		return
+	}
 
 }
