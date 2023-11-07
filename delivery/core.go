@@ -174,13 +174,13 @@ func (core *Core) GetFilmGenres(filmId uint64) []genre.GenreItem {
 	return genres
 }
 
-func (core *Core) GetFilmRating(filmId uint64) float64 {
-	rating, err := core.Comments.GetFilmRating(filmId)
+func (core *Core) GetFilmRating(filmId uint64) (float64, uint64) {
+	rating, number, err := core.Comments.GetFilmRating(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Rating error", "err", err.Error())
 	}
 
-	return rating
+	return rating, number
 }
 
 func (core *Core) GetFilmDirectors(filmId uint64) []crew.CrewItem {

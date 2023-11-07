@@ -15,11 +15,12 @@ func TestGetFilmRating(t *testing.T) {
 	}
 	defer db.Close()
 
-	rows := sqlmock.NewRows([]string{"Average"})
+	rows := sqlmock.NewRows([]string{"Average", "Amount"})
 
-	expect := 4.2
+	expectRating := 4.2
+	expectAmount := uint64(3)
 
-	rows = rows.AddRow(expect)
+	rows = rows.AddRow(expectRating, expectAmount)
 
 	mock.ExpectQuery("SELECT").WithArgs(1).WillReturnRows(rows)
 
@@ -27,7 +28,7 @@ func TestGetFilmRating(t *testing.T) {
 		DB: db,
 	}
 
-	rating, err := repo.GetFilmRating(1)
+	rating, number, err := repo.GetFilmRating(1)
 	if err != nil {
 		t.Errorf("GetFilm error: %s", err)
 	}
@@ -37,9 +38,12 @@ func TestGetFilmRating(t *testing.T) {
 		return
 	}
 
-	if rating != expect {
-		t.Errorf("results not match, want %v, have %v", expect, rating)
+	if rating != expectRating {
+		t.Errorf("results not match, want %v, have %v", expectRating, rating)
 		return
+	}
+	if number != expectAmount {
+		t.Errorf("results not match, want %v, have %v", expectAmount, number)
 	}
 
 	mock.
@@ -47,7 +51,7 @@ func TestGetFilmRating(t *testing.T) {
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	_, err = repo.GetFilmRating(1)
+	rating, number, err = repo.GetFilmRating(1)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return
@@ -55,6 +59,12 @@ func TestGetFilmRating(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected error, got nil")
 		return
+	}
+	if rating != 0 {
+		t.Errorf("expected rating 0, got %f", rating)
+	}
+	if number != 0 {
+		t.Errorf("expected number 0, got %d", number)
 	}
 }
 

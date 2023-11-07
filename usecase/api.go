@@ -9,31 +9,12 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
 )
 
 type API struct {
 	core *delivery.Core
 	lg   *slog.Logger
-}
-
-type FilmsResponse struct {
-	Page           uint64          `json:"current_page"`
-	PageSize       uint64          `json:"page_size"`
-	CollectionName string          `json:"collection_name"`
-	Total          uint64          `json:"total"`
-	Films          []film.FilmItem `json:"films"`
-}
-
-type FilmResponse struct {
-	Film       film.FilmItem     `json:"film"`
-	Genres     []genre.GenreItem `json:"genres"`
-	Rating     float64           `json:"rating"`
-	Directors  []crew.CrewItem   `json:"directors"`
-	Scenarists []crew.CrewItem   `json:"scenarists"`
-	Characters []crew.Character  `json:"characters"`
 }
 
 func GetApi(c *delivery.Core, l *slog.Logger) *API {
@@ -239,7 +220,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	genres := a.core.GetFilmGenres(filmId)
-	rating := a.core.GetFilmRating(filmId)
+	rating, number := a.core.GetFilmRating(filmId)
 	directors := a.core.GetFilmDirectors(filmId)
 	scenarists := a.core.GetFilmScenarists(filmId)
 	characters := a.core.GetFilmCharacters(filmId)
@@ -248,6 +229,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		Film:       *film,
 		Genres:     genres,
 		Rating:     rating,
+		Number:     number,
 		Directors:  directors,
 		Scenarists: scenarists,
 		Characters: characters,
