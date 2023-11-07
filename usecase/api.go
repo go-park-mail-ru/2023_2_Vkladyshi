@@ -35,10 +35,37 @@ func GetApi(c *delivery.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/api/v1/comment", api.Comment)
 	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 	mx.HandleFunc("/api/v1/settings", api.Profile)
+	mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
 
 	api.mx = mx
 
 	return api
+}
+
+func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
+	response := Response{Status: http.StatusOK, Body: nil}
+
+	csrfToken := r.Header.Get("x-csrf-token")
+
+	found, err := a.core.CheckCsrfToken(csrfToken)
+	if csrfToken != "" && found {
+		w.Header().Set("X-CSRF-Token", csrfToken)
+		a.SendResponse(w, response)
+		return
+	}
+
+	token, err := a.core.CreateCsrfToken()
+
+	if err != nil {
+		w.Header().Set("X-CSRF-Token", "null")
+		response.Status = 502
+		a.SendResponse(w, response)
+	}
+
+	w.Header().Set("X-CSRF-Token", token)
+	a.SendResponse(w, response)
+	return
+
 }
 
 func (a *API) ListenAndServe() {

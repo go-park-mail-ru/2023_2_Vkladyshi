@@ -7,10 +7,11 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
 )
 
 type ICore interface {
-	CreateSession(login string) (string, Session, error)
+	CreateSession(login string) (string, session.Session, error)
 	KillSession(sid string) error
 	FindActiveSession(sid string) (bool, error)
 	CreateUserAccount(login string, password string, name string, birthDate string, email string) error
@@ -31,4 +32,6 @@ type ICore interface {
 	GetUserName(sid string) (string, error)
 	GetUserProfile(login string) (*profile.UserItem, error)
 	GetGenre(genreId uint64) (string, error)
+	CheckCsrfToken(token string) (bool, error)
+	CreateCsrfToken() (string, error)
 }

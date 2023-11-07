@@ -12,14 +12,17 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/csrf"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
 )
 
 type Core struct {
-	sessions   map[string]Session
+	sessions   session.SessionRepo
+	csrfTokens csrf.CsrfRepo
 	mutex      sync.RWMutex
 	lg         *slog.Logger
 	films      film.IFilmsRepo
@@ -36,8 +39,23 @@ type Session struct {
 }
 
 func GetCore(cfg configs.DbDsnCfg, lg *slog.Logger) *Core {
+	csrf, err := csrf.GetCsrfRepo(lg)
+
+	if err != nil {
+		lg.Error("Csrf repository is not responding")
+		return nil
+	}
+
+	session, err := session.GetSessionRepo(lg)
+
+	if err != nil {
+		lg.Error("Session repository is not responding")
+		return nil
+	}
+
 	core := Core{
-		sessions:   make(map[string]Session),
+		sessions:   *session,
+		csrfTokens: *csrf,
 		lg:         lg.With("module", "core"),
 		films:      film.GetFilmRepo(cfg, lg),
 		users:      profile.GetUserRepo(cfg, lg),
@@ -51,33 +69,100 @@ func GetCore(cfg configs.DbDsnCfg, lg *slog.Logger) *Core {
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func (core *Core) CreateSession(login string) (string, Session, error) {
-	SID := RandStringRunes(32)
+func (core *Core) CheckCsrfToken(token string) (bool, error) {
+	core.mutex.RLock()
+	found, err := core.csrfTokens.CheckActiveCsrf(token, core.lg)
+	core.mutex.RUnlock()
 
-	session := Session{
+	if err != nil {
+		return false, err
+	}
+
+	return found, err
+}
+
+func (core *Core) CreateCsrfToken() (string, error) {
+	sid := RandStringRunes(32)
+
+	core.mutex.Lock()
+	csrfAdded, err := core.csrfTokens.AddCsrf(
+		csrf.Csrf{
+			SID:       sid,
+			ExpiresAt: time.Now().Add(3 * time.Hour),
+		},
+		core.lg,
+	)
+	core.mutex.Unlock()
+
+	if !csrfAdded && err != nil {
+		return "", err
+	}
+
+	if !csrfAdded {
+		return "", nil
+	}
+
+	return sid, nil
+}
+
+func (core *Core) GetUserName(sid string) (string, error) {
+	core.mutex.RLock()
+	login, err := core.sessions.GetUserLogin(sid, core.lg)
+	core.mutex.RUnlock()
+
+	if err != nil {
+		return "", err
+	}
+
+	return login, nil
+}
+
+func (core *Core) CreateSession(login string) (string, session.Session, error) {
+	sid := RandStringRunes(32)
+
+	newSession := session.Session{
 		Login:     login,
+		SID:       sid,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
 	}
 
 	core.mutex.Lock()
-	core.sessions[SID] = session
+	sessionAdded, err := core.sessions.AddSession(newSession, core.lg)
 	core.mutex.Unlock()
 
-	return SID, session, nil
-}
+	if !sessionAdded && err != nil {
+		return "", session.Session{}, err
+	}
 
-func (core *Core) KillSession(sid string) error {
-	core.mutex.Lock()
-	delete(core.sessions, sid)
-	core.mutex.Unlock()
-	return nil
+	if !sessionAdded {
+		return "", session.Session{}, nil
+	}
+
+	return sid, newSession, nil
 }
 
 func (core *Core) FindActiveSession(sid string) (bool, error) {
 	core.mutex.RLock()
-	_, found := core.sessions[sid]
+	found, err := core.sessions.CheckActiveSession(sid, core.lg)
 	core.mutex.RUnlock()
+
+	if err != nil {
+		return false, err
+	}
+
 	return found, nil
+}
+
+func (core *Core) KillSession(sid string) error {
+	core.mutex.Lock()
+	_, err := core.sessions.DeleteSession(sid, core.lg)
+	core.mutex.Unlock()
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
@@ -238,10 +323,6 @@ func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, tex
 	}
 
 	return nil
-}
-
-func (core *Core) GetUserName(sid string) (string, error) {
-	return "", nil
 }
 
 func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
