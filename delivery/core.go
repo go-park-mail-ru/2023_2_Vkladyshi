@@ -244,3 +244,13 @@ func (core *Core) GetActorsCareer(actorId uint64) []profession.ProfessionItem {
 
 	return career
 }
+
+func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text string) bool {
+	err := core.Comments.AddComment(filmId, userId, rating, text)
+	if err != nil {
+		core.lg.Error("Add Comment error", "err", err.Error())
+		return false
+	}
+
+	return true
+}

@@ -167,6 +167,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
+
 	var request delivery.SignupRequest
 
 	body, err := io.ReadAll(r.Body)
@@ -304,4 +305,8 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 
 	response.Body = commentsResponse
 	a.SendResponse(w, response)
+}
+
+func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
+
 }
