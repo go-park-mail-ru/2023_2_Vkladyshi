@@ -27,7 +27,7 @@ type ICore interface {
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]comment.CommentItem, error)
 	GetActor(actorId uint64) (*crew.CrewItem, error)
 	GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error)
-	AddComment(filmId uint64, userLogin string, rating uint16, text string) (bool, error)
+	AddComment(filmId uint64, userLogin string, rating uint16, text string) error
 	GetUserName(sid string) (string, error)
 	GetUserProfile(login string) (*profile.UserItem, error)
 }

@@ -451,7 +451,13 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.core.AddComment(commentRequest.FilmId, login, commentRequest.Rating, commentRequest.Text)
+	err = a.core.AddComment(commentRequest.FilmId, login, commentRequest.Rating, commentRequest.Text)
+	if err != nil {
+		a.lg.Error("Add Comment error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+	}
+
+	a.SendResponse(w, response)
 }
 
 func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
