@@ -274,3 +274,34 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 	response.Body = actorResponse
 	a.SendResponse(w, response)
 }
+
+func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+
+	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+	if err != nil {
+		page = 1
+	}
+	pageSize, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
+	if err != nil {
+		pageSize = 10
+	}
+
+	comments := a.core.GetFilmComments(filmId, (page-1)*pageSize, pageSize)
+
+	commentsResponse := CommentResponse{Comments: comments}
+
+	response.Body = commentsResponse
+	a.SendResponse(w, response)
+}

@@ -13,7 +13,7 @@ import (
 type ICommentRepo interface {
 	PingDb() error
 	GetFilmRating(filmId uint64) (float64, uint64, error)
-	GetFilmComments(filmId uint64, first uint64, last uint64) ([]CommentItem, error)
+	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error)
 }
 
 type RepoPostgre struct {
@@ -63,14 +63,14 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	return rating, number, nil
 }
 
-func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, last uint64) ([]CommentItem, error) {
+func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error) {
 	var comments []CommentItem
 
 	rows, err := repo.DB.Query(
 		"SELECT profile.login, rating, comment FROM users_comment "+
 			"JOIN profile ON users_comment.id_user = profile.id "+
 			"WHERE id_film = $1"+
-			"OFFSET $2 LIMIT $3", filmId, first, last)
+			"OFFSET $2 LIMIT $3", filmId, first, limit)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, err
 	}

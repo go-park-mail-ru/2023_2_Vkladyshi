@@ -32,6 +32,7 @@ func main() {
 	mx.HandleFunc("/api/v1/films", api.Films)
 	mx.HandleFunc("/api/v1/film", api.Film)
 	mx.HandleFunc("/api/v1/actor", api.Actor)
+	mx.HandleFunc("/api/v1/comment", api.Comment)
 	err = http.ListenAndServe(":8080", mx)
 	if err != nil {
 		lg.Error("ListenAndServe error", "err", err.Error())

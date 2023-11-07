@@ -218,8 +218,8 @@ func (core *Core) GetFilmCharacters(filmId uint64) []crew.Character {
 	return characters
 }
 
-func (core *Core) GetFilmComments(filmId uint64, first uint64, last uint64) []comment.CommentItem {
-	comments, err := core.Comments.GetFilmComments(filmId, first, last)
+func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) []comment.CommentItem {
+	comments, err := core.Comments.GetFilmComments(filmId, first, limit)
 	if err != nil {
 		core.lg.Error("Get Film Comments error", "err", err.Error())
 	}

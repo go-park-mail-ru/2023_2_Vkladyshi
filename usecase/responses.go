@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
@@ -32,4 +33,8 @@ type ActorResponse struct {
 	BirthDate string                      `json:"birthday"`
 	Country   string                      `json:"country"`
 	Info      string                      `json:"info_text"`
+}
+
+type CommentResponse struct {
+	Comments []comment.CommentItem `json:"comment"`
 }
