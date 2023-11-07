@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 
@@ -14,7 +15,6 @@ type IFilmsRepo interface {
 	GetFilmsByGenre(genre string, start uint64, end uint64) ([]FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]FilmItem, error)
 	GetFilm(filmId uint64) (*FilmItem, error)
-	PingDb() error
 }
 
 type RepoPostgre struct {
@@ -37,7 +37,18 @@ func GetFilmRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
 	postgreDb := RepoPostgre{DB: db}
+
+	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
+}
+
+func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
+	err := repo.DB.Ping()
+	if err != nil {
+		lg.Error("Repo Film db ping error", err.Error())
+	}
+
+	time.Sleep(time.Duration(timer) * time.Second)
 }
 
 func (repo *RepoPostgre) GetFilmsByGenre(genre string, start uint64, end uint64) ([]FilmItem, error) {
@@ -91,14 +102,6 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) 
 	}
 
 	return films, nil
-}
-
-func (repo *RepoPostgre) PingDb() error {
-	err := repo.DB.Ping()
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {

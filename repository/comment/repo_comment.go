@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 
@@ -11,7 +12,6 @@ import (
 )
 
 type ICommentRepo interface {
-	PingDb() error
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error)
 	AddComment(filmId uint64, userId uint64, rating uint16, text string) error
@@ -37,15 +37,18 @@ func GetCommentRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
 	postgreDb := RepoPostgre{DB: db}
+
+	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
-func (repo *RepoPostgre) PingDb() error {
+func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	err := repo.DB.Ping()
 	if err != nil {
-		return err
+		lg.Error("Repo Comment db ping error", err.Error())
 	}
-	return nil
+
+	time.Sleep(time.Duration(timer) * time.Second)
 }
 
 func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {

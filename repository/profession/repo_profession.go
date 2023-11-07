@@ -4,12 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 )
 
 type IProfessionRepo interface {
-	PingDb() error
 	GetActorsProfessions(actorId uint64) ([]ProfessionItem, error)
 }
 
@@ -33,15 +33,18 @@ func GetProfessionRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
 	postgreDb := RepoPostgre{DB: db}
+
+	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
-func (repo *RepoPostgre) PingDb() error {
+func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	err := repo.DB.Ping()
 	if err != nil {
-		return err
+		lg.Error("Repo Profession db ping error", err.Error())
 	}
-	return nil
+
+	time.Sleep(time.Duration(timer) * time.Second)
 }
 
 func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]ProfessionItem, error) {

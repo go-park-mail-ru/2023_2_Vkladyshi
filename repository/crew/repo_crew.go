@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 
@@ -11,7 +12,6 @@ import (
 )
 
 type ICrewRepo interface {
-	PingDb() error
 	GetFilmDirectors(filmId uint64) ([]CrewItem, error)
 	GetFilmScenarists(filmId uint64) ([]CrewItem, error)
 	GetFilmCharacters(filmId uint64) ([]Character, error)
@@ -38,15 +38,18 @@ func GetCrewRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
 	postgreDb := RepoPostgre{DB: db}
+
+	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
-func (repo *RepoPostgre) PingDb() error {
+func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	err := repo.DB.Ping()
 	if err != nil {
-		return err
+		lg.Error("Repo Crew db ping error", err.Error())
 	}
-	return nil
+
+	time.Sleep(time.Duration(timer) * time.Second)
 }
 
 func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]CrewItem, error) {

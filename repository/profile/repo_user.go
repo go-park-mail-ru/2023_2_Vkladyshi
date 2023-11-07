@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 
@@ -14,7 +15,6 @@ type IUserRepo interface {
 	GetUser(login string, password string) (*UserItem, bool, error)
 	FindUser(login string) (bool, error)
 	CreateUser(login string, password string, name string, birthDate string, email string) error
-	PingDb() error
 }
 
 type RepoPostgre struct {
@@ -37,7 +37,18 @@ func GetUserRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
 	postgreDb := RepoPostgre{DB: db}
+
+	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
+}
+
+func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
+	err := repo.DB.Ping()
+	if err != nil {
+		lg.Error("Repo Profile db ping error", err.Error())
+	}
+
+	time.Sleep(time.Duration(timer) * time.Second)
 }
 
 func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool, error) {
@@ -81,13 +92,5 @@ func (repo *RepoPostgre) CreateUser(login string, password string, name string, 
 		return err
 	}
 
-	return nil
-}
-
-func (repo *RepoPostgre) PingDb() error {
-	err := repo.DB.Ping()
-	if err != nil {
-		return err
-	}
 	return nil
 }

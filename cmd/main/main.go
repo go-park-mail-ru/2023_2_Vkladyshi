@@ -22,8 +22,6 @@ func main() {
 	core := delivery.GetCore(*config, lg)
 	api := usecase.GetApi(core, lg)
 
-	go core.PingRepos(config.Timer)
-
 	mx := http.NewServeMux()
 	mx.HandleFunc("/signup", api.Signup)
 	mx.HandleFunc("/signin", api.Signin)
