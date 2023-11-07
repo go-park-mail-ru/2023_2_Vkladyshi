@@ -43,7 +43,7 @@ func GetGenreRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	err := repo.DB.Ping()
 	if err != nil {
-		lg.Error("Repo Genre db ping error", err.Error())
+		lg.Error("Repo Genre db ping error", "err", err.Error())
 	}
 
 	time.Sleep(time.Duration(timer) * time.Second)
