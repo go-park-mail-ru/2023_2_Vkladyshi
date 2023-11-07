@@ -166,7 +166,7 @@ func (core *Core) KillSession(sid string) error {
 }
 
 func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
-	if matched, _ := regexp.MatchString(`^\w@\w$`, email); !matched {
+	if matched, _ := regexp.MatchString(`@`, email); !matched {
 		return errors.InvalideEmail
 	}
 	err := core.users.CreateUser(login, password, name, birthDate, email)
