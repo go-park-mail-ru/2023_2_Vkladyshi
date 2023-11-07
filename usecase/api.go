@@ -13,7 +13,7 @@ import (
 )
 
 type API struct {
-	core *delivery.Core
+	core delivery.ICore
 	lg   *slog.Logger
 }
 
