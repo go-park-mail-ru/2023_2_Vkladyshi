@@ -26,7 +26,10 @@ func TestGetFilmsByGenre(t *testing.T) {
 		rows = rows.AddRow(item.Id, item.Title, item.Poster)
 	}
 
-	mock.ExpectQuery("SELECT film.id, film.title, poster FROM film JOIN").WithArgs("g1", 1, 2).WillReturnRows(rows)
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT film.id, film.title, poster FROM film  JOIN films_genre ON film.id = films_genre.id_film WHERE id_genre = $1 ORDER BY release_date DESC OFFSET $2 LIMIT $3")).
+		WithArgs(1, 1, 2).
+		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		db: db,
@@ -47,9 +50,9 @@ func TestGetFilmsByGenre(t *testing.T) {
 		return
 	}
 
-	mock.
-		ExpectQuery("SELECT film.id, film.title, poster FROM film JOIN").
-		WithArgs("g3", 1, 2).
+	mock.ExpectQuery(
+		regexp.QuoteMeta("SELECT film.id, film.title, poster FROM film  JOIN films_genre ON film.id = films_genre.id_film WHERE id_genre = $1 ORDER BY release_date DESC OFFSET $2 LIMIT $3")).
+		WithArgs(1, 1, 2).
 		WillReturnError(fmt.Errorf("db_error"))
 
 	_, err = repo.GetFilmsByGenre(1, 1, 2)
