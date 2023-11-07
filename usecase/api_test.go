@@ -1,4 +1,4 @@
-package main
+package usecase
 
 import (
 	"encoding/json"
@@ -6,28 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery"
 )
-
-func TestCreateAndKillSession(t *testing.T) {
-	login := "testLogin"
-	testCore := Core{sessions: make(map[string]Session)}
-
-	sid, _, _ := testCore.CreateSession(login)
-	isFound, _ := testCore.FindActiveSession(sid)
-	if !isFound {
-		t.Errorf("session not found")
-	}
-
-	err := testCore.KillSession(sid)
-	if err != nil {
-		t.Errorf("failed to kill session")
-	}
-
-	isFound, _ = testCore.FindActiveSession(sid)
-	if isFound {
-		t.Errorf("found killed session")
-	}
-}
 
 func TestFilmsPost(t *testing.T) {
 	h := httptest.NewRequest(http.MethodPost, "/api/v1/films", nil)
@@ -35,7 +16,7 @@ func TestFilmsPost(t *testing.T) {
 
 	api := API{}
 	api.Films(w, h)
-	var response Response
+	var response delivery.Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)
@@ -54,7 +35,7 @@ func TestSignupGet(t *testing.T) {
 
 	api := API{}
 	api.Signup(w, h)
-	var response Response
+	var response delivery.Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)
@@ -73,7 +54,7 @@ func TestSigninGet(t *testing.T) {
 
 	api := API{}
 	api.Signin(w, h)
-	var response Response
+	var response delivery.Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)

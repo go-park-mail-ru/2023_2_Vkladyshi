@@ -1,4 +1,4 @@
-package main
+package delivery
 
 import (
 	"log/slog"
@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
@@ -22,6 +23,24 @@ type Core struct {
 	Genres   genre.IGenreRepo
 	Comments comment.ICommentRepo
 	Crew     crew.ICrewRepo
+}
+
+type Session struct {
+	Login     string
+	ExpiresAt time.Time
+}
+
+func GetCore(cfg configs.DbDsnCfg, lg *slog.Logger) *Core {
+	core := Core{
+		sessions: make(map[string]Session),
+		lg:       lg.With("module", "core"),
+		Films:    film.GetFilmRepo(cfg, lg),
+		Users:    profile.GetUserRepo(cfg, lg),
+		Genres:   genre.GetGenreRepo(cfg, lg),
+		Comments: comment.GetCommentRepo(cfg, lg),
+		Crew:     crew.GetCrewRepo(cfg, lg),
+	}
+	return &core
 }
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")

@@ -1,4 +1,4 @@
-package main
+package usecase
 
 import (
 	"encoding/json"
@@ -8,19 +8,15 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
 )
 
 type API struct {
-	core *Core
+	core *delivery.Core
 	lg   *slog.Logger
-}
-
-type Session struct {
-	Login     string
-	ExpiresAt time.Time
 }
 
 type FilmsResponse struct {
@@ -40,7 +36,11 @@ type FilmResponse struct {
 	Characters []crew.Character  `json:"characters"`
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response Response) {
+func GetApi(c *delivery.Core, l *slog.Logger) *API {
+	return &API{core: c, lg: l.With("module", "api")}
+}
+
+func (a *API) SendResponse(w http.ResponseWriter, response delivery.Response) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -56,7 +56,7 @@ func (a *API) SendResponse(w http.ResponseWriter, response Response) {
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
 
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
@@ -93,7 +93,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
 
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
@@ -110,7 +110,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	} else {
 		err := a.core.KillSession(session.Value)
 		if err != nil {
-			a.core.lg.Error("failed to kill session", "err", err.Error())
+			a.lg.Error("failed to kill session", "err", err.Error())
 		}
 		session.Expires = time.Now().AddDate(0, 0, -1)
 		http.SetCookie(w, session)
@@ -120,7 +120,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
 	var authorized bool
 
 	session, err := r.Cookie("session_id")
@@ -138,13 +138,13 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
-	var request SigninRequest
+	var request delivery.SigninRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -180,13 +180,13 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
-	var request SignupRequest
+	var request delivery.SignupRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -210,7 +210,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	} else {
 		a.core.CreateUserAccount(request)
 		if err != nil {
-			a.core.lg.Error("failed to create user account", "err", err.Error())
+			a.lg.Error("failed to create user account", "err", err.Error())
 		}
 	}
 
@@ -218,7 +218,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := delivery.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
