@@ -19,7 +19,7 @@ type ICrewRepo interface {
 }
 
 type RepoPostgre struct {
-	DB *sql.DB
+	db *sql.DB
 }
 
 func GetCrewRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
@@ -37,14 +37,14 @@ func GetCrewRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	}
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
-	postgreDb := RepoPostgre{DB: db}
+	postgreDb := RepoPostgre{db: db}
 
 	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
 func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
-	err := repo.DB.Ping()
+	err := repo.db.Ping()
 	if err != nil {
 		lg.Error("Repo Crew db ping error", "err", err.Error())
 	}
@@ -55,7 +55,7 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]CrewItem, error) {
 	var directors []CrewItem
 
-	rows, err := repo.DB.Query(
+	rows, err := repo.db.Query(
 		"SELECT crew.id, name, photo  FROM crew "+
 			"JOIN person_in_film ON crew.id = person_in_film.id_person "+
 			"WHERE id_film = $1 AND id_profession = "+
@@ -80,7 +80,7 @@ func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]CrewItem, error) {
 func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]CrewItem, error) {
 	var scenarists []CrewItem
 
-	rows, err := repo.DB.Query(
+	rows, err := repo.db.Query(
 		"SELECT crew.id, name, photo  FROM crew "+
 			"JOIN person_in_film ON crew.id = person_in_film.id_person "+
 			"WHERE id_film = $1 AND id_profession = "+
@@ -105,7 +105,7 @@ func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]CrewItem, error) {
 func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
 	characters := []Character{}
 
-	rows, err := repo.DB.Query(
+	rows, err := repo.db.Query(
 		"SELECT crew.id, name, photo, person_in_film.character_name FROM crew "+
 			"JOIN person_in_film ON crew.id = person_in_film.id_person "+
 			"WHERE id_film = $1 AND id_profession = "+
@@ -130,7 +130,7 @@ func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
 func (repo *RepoPostgre) GetActor(actorId uint64) (*CrewItem, error) {
 	actor := &CrewItem{}
 
-	err := repo.DB.QueryRow(
+	err := repo.db.QueryRow(
 		"SELECT id, name, birth_date, photo FROM crew "+
 			"WHERE id = $1", actorId).
 		Scan(&actor.Id, &actor.Name, &actor.Birthdate, &actor.Photo)

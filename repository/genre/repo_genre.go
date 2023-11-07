@@ -16,7 +16,7 @@ type IGenreRepo interface {
 }
 
 type RepoPostgre struct {
-	DB *sql.DB
+	db *sql.DB
 }
 
 func GetGenreRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
@@ -34,14 +34,14 @@ func GetGenreRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	}
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
-	postgreDb := RepoPostgre{DB: db}
+	postgreDb := RepoPostgre{db: db}
 
 	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
 func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
-	err := repo.DB.Ping()
+	err := repo.db.Ping()
 	if err != nil {
 		lg.Error("Repo Genre db ping error", "err", err.Error())
 	}
@@ -52,7 +52,7 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]GenreItem, error) {
 	var genres []GenreItem
 
-	rows, err := repo.DB.Query(
+	rows, err := repo.db.Query(
 		"SELECT genre.id, genre.title FROM genre "+
 			"JOIN films_genre ON genre.id = films_genre.id_genre "+
 			"WHERE films_genre.id_film = $1", filmId)

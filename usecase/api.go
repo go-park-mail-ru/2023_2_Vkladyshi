@@ -16,10 +16,36 @@ import (
 type API struct {
 	core delivery.ICore
 	lg   *slog.Logger
+	mx   *http.ServeMux
 }
 
 func GetApi(c *delivery.Core, l *slog.Logger) *API {
-	return &API{core: c, lg: l.With("module", "api")}
+	api := &API{
+		core: c,
+		lg:   l.With("module", "api"),
+	}
+	mx := http.NewServeMux()
+	mx.HandleFunc("/signup", api.Signup)
+	mx.HandleFunc("/signin", api.Signin)
+	mx.HandleFunc("/logout", api.LogoutSession)
+	mx.HandleFunc("/authcheck", api.AuthAccept)
+	mx.HandleFunc("/api/v1/films", api.Films)
+	mx.HandleFunc("/api/v1/film", api.Film)
+	mx.HandleFunc("/api/v1/actor", api.Actor)
+	mx.HandleFunc("/api/v1/comment", api.Comment)
+	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
+	mx.HandleFunc("/api/v1/settings", api.Profile)
+
+	api.mx = mx
+
+	return api
+}
+
+func (a *API) ListenAndServe() {
+	err := http.ListenAndServe(":8080", a.mx)
+	if err != nil {
+		a.lg.Error("ListenAndServe error", "err", err.Error())
+	}
 }
 
 func (a *API) SendResponse(w http.ResponseWriter, response Response) {
@@ -443,5 +469,4 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
-
 }

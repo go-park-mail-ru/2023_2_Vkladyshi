@@ -19,7 +19,7 @@ type IUserRepo interface {
 }
 
 type RepoPostgre struct {
-	DB *sql.DB
+	db *sql.DB
 }
 
 func GetUserRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
@@ -37,14 +37,14 @@ func GetUserRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	}
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
-	postgreDb := RepoPostgre{DB: db}
+	postgreDb := RepoPostgre{db: db}
 
 	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
 func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
-	err := repo.DB.Ping()
+	err := repo.db.Ping()
 	if err != nil {
 		lg.Error("Repo Profile db ping error", "err", err.Error())
 	}
@@ -55,7 +55,7 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool, error) {
 	post := &UserItem{}
 
-	err := repo.DB.QueryRow(
+	err := repo.db.QueryRow(
 		"SELECT login, photo FROM profile "+
 			"WHERE login = $1 AND password = $2", login, password).Scan(&post.Login, &post.Photo)
 	if err == sql.ErrNoRows {
@@ -71,7 +71,7 @@ func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool
 func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 	post := &UserItem{}
 
-	err := repo.DB.QueryRow(
+	err := repo.db.QueryRow(
 		"SELECT login FROM profile "+
 			"WHERE login = $1", login).Scan(&post.Login)
 	if err == sql.ErrNoRows {
@@ -85,7 +85,7 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 }
 
 func (repo *RepoPostgre) CreateUser(login string, password string, name string, birthDate string, email string) error {
-	_, err := repo.DB.Exec(
+	_, err := repo.db.Exec(
 		"INSERT INTO profile(name, birth_date, photo, login, password, email, registration_date) "+
 			"VALUES($1, $2, '../../user_avatars/default.jpg', $3, $4, $5, CURRENT_TIMESTAMP)",
 		name, birthDate, login, password, email)
@@ -99,7 +99,7 @@ func (repo *RepoPostgre) CreateUser(login string, password string, name string, 
 func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
 	post := &UserItem{}
 
-	err := repo.DB.QueryRow(
+	err := repo.db.QueryRow(
 		"SELECT name, birth_date, login, email, photo FROM profile "+
 			"WHERE login = $1", login).Scan(&post.Name, &post.Birthdate, &post.Login, &post.Email, &post.Photo)
 	if err != nil {

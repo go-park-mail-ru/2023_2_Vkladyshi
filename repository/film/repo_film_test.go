@@ -29,7 +29,7 @@ func TestGetFilmsByGenre(t *testing.T) {
 	mock.ExpectQuery("SELECT film.id, film.title, poster FROM film JOIN").WithArgs("g1", 1, 2).WillReturnRows(rows)
 
 	repo := &RepoPostgre{
-		DB: db,
+		db: db,
 	}
 
 	films, err := repo.GetFilmsByGenre("g1", 1, 2)
@@ -83,7 +83,7 @@ func TestGetFilms(t *testing.T) {
 	mock.ExpectQuery("SELECT film.id, film.title, poster FROM film").WithArgs(1, 2).WillReturnRows(rows)
 
 	repo := &RepoPostgre{
-		DB: db,
+		db: db,
 	}
 
 	films, err := repo.GetFilms(1, 2)
@@ -140,7 +140,7 @@ func TestGetFilm(t *testing.T) {
 		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
-		DB: db,
+		db: db,
 	}
 
 	films, err := repo.GetFilm(1)

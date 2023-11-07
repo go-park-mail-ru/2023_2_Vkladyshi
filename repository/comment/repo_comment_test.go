@@ -29,7 +29,7 @@ func TestGetFilmRating(t *testing.T) {
 		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
-		DB: db,
+		db: db,
 	}
 
 	rating, number, err := repo.GetFilmRating(1)
@@ -95,7 +95,7 @@ func TestGetFilmComments(t *testing.T) {
 		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
-		DB: db,
+		db: db,
 	}
 
 	comments, err := repo.GetFilmComments(1, 0, 5)

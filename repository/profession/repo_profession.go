@@ -14,7 +14,7 @@ type IProfessionRepo interface {
 }
 
 type RepoPostgre struct {
-	DB *sql.DB
+	db *sql.DB
 }
 
 func GetProfessionRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
@@ -32,14 +32,14 @@ func GetProfessionRepo(config configs.DbDsnCfg, lg *slog.Logger) *RepoPostgre {
 	}
 	db.SetMaxOpenConns(config.MaxOpenConns)
 
-	postgreDb := RepoPostgre{DB: db}
+	postgreDb := RepoPostgre{db: db}
 
 	go postgreDb.pingDb(config.Timer, lg)
 	return &postgreDb
 }
 
 func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
-	err := repo.DB.Ping()
+	err := repo.db.Ping()
 	if err != nil {
 		lg.Error("Repo Profession db ping error", "err", err.Error())
 	}
@@ -50,7 +50,7 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]ProfessionItem, error) {
 	professions := []ProfessionItem{}
 
-	rows, err := repo.DB.Query(
+	rows, err := repo.db.Query(
 		"SELECT DISTINCT title FROM profession "+
 			"JOIN person_in_film ON profession.id = person_in_film.id_profession "+
 			"WHERE id_person = $1", actorId)
