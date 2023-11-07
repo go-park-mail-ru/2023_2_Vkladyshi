@@ -253,4 +253,24 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
+
+	actor := a.core.GetActor(actorId)
+	if actor == nil {
+		response.Status = http.StatusNotFound
+		a.SendResponse(w, response)
+		return
+	}
+	career := a.core.GetActorsCareer(actorId)
+
+	actorResponse := ActorResponse{
+		Name:      actor.Name,
+		Photo:     actor.Photo,
+		BirthDate: actor.Birthdate,
+		Country:   actor.Country,
+		Info:      actor.Info,
+		Career:    career,
+	}
+
+	response.Body = actorResponse
+	a.SendResponse(w, response)
 }

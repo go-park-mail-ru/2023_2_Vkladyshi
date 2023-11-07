@@ -15,6 +15,7 @@ type ICrewRepo interface {
 	GetFilmDirectors(filmId uint64) ([]CrewItem, error)
 	GetFilmScenarists(filmId uint64) ([]CrewItem, error)
 	GetFilmCharacters(filmId uint64) ([]Character, error)
+	GetActor(actorId uint64) (*CrewItem, error)
 }
 
 type RepoPostgre struct {
@@ -121,4 +122,18 @@ func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
 	}
 
 	return characters, nil
+}
+
+func (repo *RepoPostgre) GetActor(actorId uint64) (*CrewItem, error) {
+	actor := &CrewItem{}
+
+	err := repo.DB.QueryRow(
+		"SELECT id, name, birth_date, photo FROM crew "+
+			"WHERE id = $1", actorId).
+		Scan(&actor.Id, &actor.Name, &actor.Birthdate, &actor.Photo)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, err
+	}
+
+	return actor, nil
 }

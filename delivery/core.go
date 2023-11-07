@@ -11,18 +11,20 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 )
 
 type Core struct {
-	sessions map[string]Session
-	mutex    sync.RWMutex
-	lg       *slog.Logger
-	Films    film.IFilmsRepo
-	Users    profile.IUserRepo
-	Genres   genre.IGenreRepo
-	Comments comment.ICommentRepo
-	Crew     crew.ICrewRepo
+	sessions   map[string]Session
+	mutex      sync.RWMutex
+	lg         *slog.Logger
+	Films      film.IFilmsRepo
+	Users      profile.IUserRepo
+	Genres     genre.IGenreRepo
+	Comments   comment.ICommentRepo
+	Crew       crew.ICrewRepo
+	Profession profession.IProfessionRepo
 }
 
 type Session struct {
@@ -32,13 +34,14 @@ type Session struct {
 
 func GetCore(cfg configs.DbDsnCfg, lg *slog.Logger) *Core {
 	core := Core{
-		sessions: make(map[string]Session),
-		lg:       lg.With("module", "core"),
-		Films:    film.GetFilmRepo(cfg, lg),
-		Users:    profile.GetUserRepo(cfg, lg),
-		Genres:   genre.GetGenreRepo(cfg, lg),
-		Comments: comment.GetCommentRepo(cfg, lg),
-		Crew:     crew.GetCrewRepo(cfg, lg),
+		sessions:   make(map[string]Session),
+		lg:         lg.With("module", "core"),
+		Films:      film.GetFilmRepo(cfg, lg),
+		Users:      profile.GetUserRepo(cfg, lg),
+		Genres:     genre.GetGenreRepo(cfg, lg),
+		Comments:   comment.GetCommentRepo(cfg, lg),
+		Crew:       crew.GetCrewRepo(cfg, lg),
+		Profession: profession.GetProfessionRepo(cfg, lg),
 	}
 	return &core
 }
@@ -151,6 +154,11 @@ func (core *Core) PingRepos(timer uint32) {
 			core.lg.Error("Ping Crew repo error", "err", err.Error())
 			return
 		}
+		err = core.Profession.PingDb()
+		if err != nil {
+			core.lg.Error("Ping Profession repo error", "err", err.Error())
+			return
+		}
 
 		time.Sleep(time.Duration(timer) * time.Second)
 	}
@@ -217,4 +225,22 @@ func (core *Core) GetFilmComments(filmId uint64, first uint64, last uint64) []co
 	}
 
 	return comments
+}
+
+func (core *Core) GetActor(actorId uint64) *crew.CrewItem {
+	actor, err := core.Crew.GetActor(actorId)
+	if err != nil {
+		core.lg.Error("Get Actor error", "err", err.Error())
+	}
+
+	return actor
+}
+
+func (core *Core) GetActorsCareer(actorId uint64) []profession.ProfessionItem {
+	career, err := core.Profession.GetActorsProfessions(actorId)
+	if err != nil {
+		core.lg.Error("Get Actors Career error", "err", err.Error())
+	}
+
+	return career
 }
