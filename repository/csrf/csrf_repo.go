@@ -10,9 +10,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+var mutex sync.RWMutex
+
 type CsrfRepo struct {
 	csrfRedisClient *redis.Client
-	mutex           sync.RWMutex
 	Connection      bool
 }
 
@@ -20,11 +21,11 @@ func (redisRepo *CsrfRepo) CheckRedisCsrfConnection(csrfCfg configs.DbRedisCfg) 
 	ctx := context.Background()
 	for {
 		_, err := redisRepo.csrfRedisClient.Ping(ctx).Result()
-		redisRepo.mutex.RLock()
-		redisRepo.mutex.Lock()
+		mutex.RLock()
+		mutex.Lock()
 		redisRepo.Connection = err == nil
-		redisRepo.mutex.Unlock()
-		redisRepo.mutex.RUnlock()
+		mutex.Unlock()
+		mutex.RUnlock()
 
 		time.Sleep(time.Duration(csrfCfg.Timer) * time.Second)
 	}

@@ -10,9 +10,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+var mutex sync.RWMutex
+
 type SessionRepo struct {
 	sessionRedisClient *redis.Client
-	mutex              sync.RWMutex
 	Connection         bool
 }
 
@@ -20,11 +21,11 @@ func (redisRepo *SessionRepo) CheckRedisSessionConnection(sessionCfg configs.DbR
 	ctx := context.Background()
 	for {
 		_, err := redisRepo.sessionRedisClient.Ping(ctx).Result()
-		redisRepo.mutex.Lock()
-		redisRepo.mutex.RLock()
+		mutex.Lock()
+		mutex.RLock()
 		redisRepo.Connection = err == nil
-		redisRepo.mutex.Unlock()
-		redisRepo.mutex.RUnlock()
+		mutex.Unlock()
+		mutex.RUnlock()
 		time.Sleep(time.Duration(sessionCfg.Timer) * time.Second)
 	}
 }
