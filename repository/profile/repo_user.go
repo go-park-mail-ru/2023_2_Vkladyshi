@@ -114,6 +114,17 @@ func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
 }
 
 func (repo *RepoPostgre) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
+	if password == "" {
+		_, err := repo.db.Exec("UPDATE profile "+
+			"SET login = $1, photo = $2, email = $3, birth_date = $4 "+
+			"WHERE login = $5", login, photo, email, birthDate, prevLogin)
+		if err != nil {
+			return fmt.Errorf("failed to edit profile in db: %w", err)
+		}
+
+		return nil
+	}
+
 	_, err := repo.db.Exec("UPDATE profile "+
 		"SET login = $1, password = $2, photo = $3, email = $4, birth_date = $5 "+
 		"WHERE login = $6", login, password, photo, email, birthDate, prevLogin)

@@ -98,7 +98,7 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 func (repo *RepoPostgre) AddComment(filmId uint64, userLogin string, rating uint16, text string) error {
 	_, err := repo.db.Exec(
 		"INSERT INTO users_comment(id_film, rating, comment, id_user) "+
-			"SELECT $1, $2, $3', profile.id FROM profile "+
+			"SELECT $1, $2, $3, profile.id FROM profile "+
 			"WHERE login = $4", filmId, rating, text, userLogin)
 	if err != nil {
 		return fmt.Errorf("AddComment: %w", err)
