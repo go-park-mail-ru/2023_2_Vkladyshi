@@ -14,6 +14,8 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase"
 )
 
+//go:generate mockgen -source=api.go -destination=mocks/mock.go
+
 type API struct {
 	core usecase.ICore
 	lg   *slog.Logger
@@ -605,5 +607,24 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.SendResponse(w, response)
+	err = a.core.KillSession(session.Value)
+	if err != nil {
+		a.lg.Error("cant kill session", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+
+	sid, newSession, err := a.core.CreateSession(login)
+	cookie := &http.Cookie{
+		Name:     "session_id",
+		Value:    sid,
+		Path:     "/",
+		Expires:  newSession.ExpiresAt,
+		HttpOnly: true,
+	}
+	http.SetCookie(w, cookie)
+
+	r.Method = http.MethodGet
+	a.Profile(w, r)
 }
