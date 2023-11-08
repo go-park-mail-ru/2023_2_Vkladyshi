@@ -1,4 +1,4 @@
-package usecase
+package delivery
 
 import (
 	"encoding/json"
@@ -8,18 +8,18 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase"
 )
 
 type API struct {
-	core delivery.ICore
+	core usecase.ICore
 	lg   *slog.Logger
 	mx   *http.ServeMux
 }
 
-func GetApi(c *delivery.Core, l *slog.Logger) *API {
+func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	api := &API{
 		core: c,
 		lg:   l.With("module", "api"),

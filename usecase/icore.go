@@ -1,4 +1,4 @@
-package delivery
+package usecase
 
 import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
