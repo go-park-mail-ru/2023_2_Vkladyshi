@@ -53,15 +53,15 @@ func GetCsrfRepo(csrfConfigs configs.DbRedisCfg, lg *slog.Logger) (*CsrfRepo, er
 	return &csrfRepo, nil
 }
 
-func (redisRepo *CsrfRepo) AddCsrf(active Csrf, lg *slog.Logger, r *http.Request) (bool, error) {
+func (redisRepo *CsrfRepo) AddCsrf(ctx context.Context, active Csrf, lg *slog.Logger) (bool, error) {
 	if !redisRepo.Connection {
 		lg.Error("Redis csrf connection lost")
 		return false, nil
 	}
 
-	redisRepo.csrfRedisClient.Set(r.Context(), active.SID, active.SID, 3*time.Hour)
+	redisRepo.csrfRedisClient.Set(ctx, active.SID, active.SID, 3*time.Hour)
 
-	csrfAdded, err_check := redisRepo.CheckActiveCsrf(active.SID, lg, r)
+	csrfAdded, err_check := redisRepo.CheckActiveCsrf(ctx, active.SID, lg)
 
 	if err_check != nil {
 		lg.Error("Error, cannot create csrf token " + err_check.Error())
@@ -71,13 +71,13 @@ func (redisRepo *CsrfRepo) AddCsrf(active Csrf, lg *slog.Logger, r *http.Request
 	return csrfAdded, nil
 }
 
-func (redisRepo *CsrfRepo) CheckActiveCsrf(sid string, lg *slog.Logger, r *http.Request) (bool, error) {
+func (redisRepo *CsrfRepo) CheckActiveCsrf(ctx context.Context, sid string, lg *slog.Logger) (bool, error) {
 	if !redisRepo.Connection {
 		lg.Error("Redis csrf connection lost")
 		return false, nil
 	}
 
-	_, err := redisRepo.csrfRedisClient.Get(r.Context(), sid).Result()
+	_, err := redisRepo.csrfRedisClient.Get(ctx, sid).Result()
 	if err == redis.Nil {
 		lg.Error("Key " + sid + " not found")
 		return false, nil

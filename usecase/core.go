@@ -1,10 +1,10 @@
 package usecase
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"math/rand"
-	"net/http"
 	"regexp"
 	"sync"
 	"time"
@@ -65,9 +65,9 @@ func GetCore(cfg configs.DbDsnCfg, csrfCfg configs.DbRedisCfg, sessionCfg config
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func (core *Core) CheckCsrfToken(token string, r *http.Request) (bool, error) {
+func (core *Core) CheckCsrfToken(ctx context.Context, token string) (bool, error) {
 	core.mutex.RLock()
-	found, err := core.csrfTokens.CheckActiveCsrf(token, core.lg, r)
+	found, err := core.csrfTokens.CheckActiveCsrf(ctx, token, core.lg)
 	core.mutex.RUnlock()
 
 	if err != nil {
@@ -77,17 +77,17 @@ func (core *Core) CheckCsrfToken(token string, r *http.Request) (bool, error) {
 	return found, err
 }
 
-func (core *Core) CreateCsrfToken(r *http.Request) (string, error) {
+func (core *Core) CreateCsrfToken(ctx context.Context) (string, error) {
 	sid := RandStringRunes(32)
 
 	core.mutex.Lock()
 	csrfAdded, err := core.csrfTokens.AddCsrf(
+		ctx,
 		csrf.Csrf{
 			SID:       sid,
 			ExpiresAt: time.Now().Add(3 * time.Hour),
 		},
 		core.lg,
-		r,
 	)
 	core.mutex.Unlock()
 
@@ -102,9 +102,9 @@ func (core *Core) CreateCsrfToken(r *http.Request) (string, error) {
 	return sid, nil
 }
 
-func (core *Core) GetUserName(sid string) (string, error) {
+func (core *Core) GetUserName(ctx context.Context, sid string) (string, error) {
 	core.mutex.RLock()
-	login, err := core.sessions.GetUserLogin(sid, core.lg)
+	login, err := core.sessions.GetUserLogin(ctx, sid, core.lg)
 	core.mutex.RUnlock()
 
 	if err != nil {
@@ -114,7 +114,7 @@ func (core *Core) GetUserName(sid string) (string, error) {
 	return login, nil
 }
 
-func (core *Core) CreateSession(login string) (string, session.Session, error) {
+func (core *Core) CreateSession(ctx context.Context, login string) (string, session.Session, error) {
 	sid := RandStringRunes(32)
 
 	newSession := session.Session{
@@ -124,7 +124,7 @@ func (core *Core) CreateSession(login string) (string, session.Session, error) {
 	}
 
 	core.mutex.Lock()
-	sessionAdded, err := core.sessions.AddSession(newSession, core.lg)
+	sessionAdded, err := core.sessions.AddSession(ctx, newSession, core.lg)
 	core.mutex.Unlock()
 
 	if !sessionAdded && err != nil {
@@ -138,9 +138,9 @@ func (core *Core) CreateSession(login string) (string, session.Session, error) {
 	return sid, newSession, nil
 }
 
-func (core *Core) FindActiveSession(sid string) (bool, error) {
+func (core *Core) FindActiveSession(ctx context.Context, sid string) (bool, error) {
 	core.mutex.RLock()
-	found, err := core.sessions.CheckActiveSession(sid, core.lg)
+	found, err := core.sessions.CheckActiveSession(ctx, sid, core.lg)
 	core.mutex.RUnlock()
 
 	if err != nil {
@@ -150,9 +150,9 @@ func (core *Core) FindActiveSession(sid string) (bool, error) {
 	return found, nil
 }
 
-func (core *Core) KillSession(sid string) error {
+func (core *Core) KillSession(ctx context.Context, sid string) error {
 	core.mutex.Lock()
-	_, err := core.sessions.DeleteSession(sid, core.lg)
+	_, err := core.sessions.DeleteSession(ctx, sid, core.lg)
 	core.mutex.Unlock()
 
 	if err != nil {

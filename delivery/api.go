@@ -47,7 +47,7 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 
 	csrfToken := r.Header.Get("x-csrf-token")
 
-	found, err := a.core.CheckCsrfToken(csrfToken, r)
+	found, err := a.core.CheckCsrfToken(r.Context(), csrfToken)
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusInternalServerError
@@ -59,7 +59,7 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := a.core.CreateCsrfToken(r)
+	token, err := a.core.CreateCsrfToken(r.Context())
 
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
@@ -161,13 +161,13 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, _ := a.core.FindActiveSession(session.Value)
+	found, _ := a.core.FindActiveSession(r.Context(), session.Value)
 	if !found {
 		response.Status = http.StatusUnauthorized
 		a.SendResponse(w, response)
 		return
 	} else {
-		err := a.core.KillSession(session.Value)
+		err := a.core.KillSession(r.Context(), session.Value)
 		if err != nil {
 			a.lg.Error("failed to kill session", "err", err.Error())
 		}
@@ -184,7 +184,7 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 
 	session, err := r.Cookie("session_id")
 	if err == nil && session != nil {
-		authorized, _ = a.core.FindActiveSession(session.Value)
+		authorized, _ = a.core.FindActiveSession(r.Context(), session.Value)
 	}
 
 	if !authorized {
@@ -230,7 +230,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	} else {
-		sid, session, _ := a.core.CreateSession(user.Login)
+		sid, session, _ := a.core.CreateSession(r.Context(), user.Login)
 		cookie := &http.Cookie{
 			Name:     "session_id",
 			Value:    sid,
@@ -478,7 +478,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	login, err := a.core.GetUserName(session.Value)
+	login, err := a.core.GetUserName(r.Context(), session.Value)
 	if err != nil {
 		a.lg.Error("Add comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
@@ -520,7 +520,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		login, err := a.core.GetUserName(session.Value)
+		login, err := a.core.GetUserName(r.Context(), session.Value)
 		if err != nil {
 			a.lg.Error("Get Profile error", "err", err.Error())
 		}

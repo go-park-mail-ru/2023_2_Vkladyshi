@@ -51,16 +51,15 @@ func GetSessionRepo(sessionCfg configs.DbRedisCfg, lg *slog.Logger) (*SessionRep
 	return &sessionRepo, nil
 }
 
-func (redisRepo *SessionRepo) AddSession(active Session, lg *slog.Logger) (bool, error) {
+func (redisRepo *SessionRepo) AddSession(ctx context.Context, active Session, lg *slog.Logger) (bool, error) {
 	if !redisRepo.Connection {
 		lg.Error("Redis session connection lost")
 		return false, nil
 	}
 
-	ctx := context.Background()
 	redisRepo.sessionRedisClient.Set(ctx, active.SID, active.Login, 24*time.Hour)
 
-	sessionAdded, err_check := redisRepo.CheckActiveSession(active.SID, lg)
+	sessionAdded, err_check := redisRepo.CheckActiveSession(ctx, active.SID, lg)
 
 	if err_check != nil {
 		return false, err_check
@@ -69,13 +68,12 @@ func (redisRepo *SessionRepo) AddSession(active Session, lg *slog.Logger) (bool,
 	return sessionAdded, nil
 }
 
-func (redisRepo *SessionRepo) GetUserLogin(sid string, lg *slog.Logger) (string, error) {
+func (redisRepo *SessionRepo) GetUserLogin(ctx context.Context, sid string, lg *slog.Logger) (string, error) {
 	if !redisRepo.Connection {
 		lg.Error("Redis session connection lost")
 		return "", nil
 	}
 
-	ctx := context.Background()
 	value, err := redisRepo.sessionRedisClient.Get(ctx, sid).Result()
 	if err != nil {
 		lg.Error("Error, cannot find session " + sid)
@@ -85,13 +83,11 @@ func (redisRepo *SessionRepo) GetUserLogin(sid string, lg *slog.Logger) (string,
 	return value, nil
 }
 
-func (redisRepo *SessionRepo) CheckActiveSession(sid string, lg *slog.Logger) (bool, error) {
+func (redisRepo *SessionRepo) CheckActiveSession(ctx context.Context, sid string, lg *slog.Logger) (bool, error) {
 	if !redisRepo.Connection {
 		lg.Error("Redis session connection lost")
 		return false, nil
 	}
-
-	ctx := context.Background()
 
 	_, err := redisRepo.sessionRedisClient.Get(ctx, sid).Result()
 	if err == redis.Nil {
@@ -107,9 +103,7 @@ func (redisRepo *SessionRepo) CheckActiveSession(sid string, lg *slog.Logger) (b
 	return true, nil
 }
 
-func (redisRepo *SessionRepo) DeleteSession(sid string, lg *slog.Logger) (bool, error) {
-	ctx := context.Background()
-
+func (redisRepo *SessionRepo) DeleteSession(ctx context.Context, sid string, lg *slog.Logger) (bool, error) {
 	_, err := redisRepo.sessionRedisClient.Del(ctx, sid).Result()
 	if err != nil {
 		lg.Error("Delete request could not be completed:", err)

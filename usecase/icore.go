@@ -1,7 +1,7 @@
 package usecase
 
 import (
-	"net/http"
+	"context"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
@@ -13,9 +13,9 @@ import (
 )
 
 type ICore interface {
-	CreateSession(login string) (string, session.Session, error)
-	KillSession(sid string) error
-	FindActiveSession(sid string) (bool, error)
+	CreateSession(ctx context.Context, login string) (string, session.Session, error)
+	KillSession(ctx context.Context, sid string) error
+	FindActiveSession(ctx context.Context, sid string) (bool, error)
 	CreateUserAccount(login string, password string, name string, birthDate string, email string) error
 	FindUserAccount(login string, password string) (*profile.UserItem, bool, error)
 	FindUserByLogin(login string) (bool, error)
@@ -31,9 +31,9 @@ type ICore interface {
 	GetActor(actorId uint64) (*crew.CrewItem, error)
 	GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error)
 	AddComment(filmId uint64, userLogin string, rating uint16, text string) error
-	GetUserName(sid string) (string, error)
+	GetUserName(ctx context.Context, sid string) (string, error)
 	GetUserProfile(login string) (*profile.UserItem, error)
 	GetGenre(genreId uint64) (string, error)
-	CheckCsrfToken(token string, r *http.Request) (bool, error)
-	CreateCsrfToken(r *http.Request) (string, error)
+	CheckCsrfToken(ctx context.Context, token string) (bool, error)
+	CreateCsrfToken(ctx context.Context) (string, error)
 }
