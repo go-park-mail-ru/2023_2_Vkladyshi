@@ -17,6 +17,7 @@ type IUserRepo interface {
 	FindUser(login string) (bool, error)
 	CreateUser(login string, password string, name string, birthDate string, email string) error
 	GetUserProfile(login string) (*UserItem, error)
+	EditProfile(login string, password string, email string, birthDate string, photo string) error
 }
 
 type RepoPostgre struct {
@@ -108,4 +109,15 @@ func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
 	}
 
 	return post, nil
+}
+
+func (repo *RepoPostgre) EditProfile(login string, password string, email string, birthDate string, photo string) error {
+	_, err := repo.db.Exec("UPDATE profile "+
+		"SET login = $1, password = $2, photo = $3, email = $4, birth_date "+
+		"WHERE login = $1", login, password, photo, email, birthDate)
+	if err != nil {
+		return fmt.Errorf("failed to edit profile in db: %w", err)
+	}
+
+	return nil
 }

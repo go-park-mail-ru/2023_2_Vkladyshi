@@ -5,6 +5,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -548,4 +549,30 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
+
+	r.ParseMultipartForm(0)
+	email := r.FormValue("email")
+	login := r.FormValue("login")
+	birthDate := r.FormValue("birthday")
+	password := r.FormValue("password")
+	photo, handler, err := r.FormFile("photo")
+	if err != nil {
+		a.lg.Error("Post profile error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+
+	filePhoto, err := os.OpenFile("/avatars/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		a.lg.Error("Post profile error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+	defer filePhoto.Close()
+
+	io.Copy(filePhoto, photo)
+
+	a.core.EditProfile(login, password, email, birthDate, "/avatars/"+handler.Filename)
 }
