@@ -28,7 +28,7 @@ INSERT INTO film(title, info, poster, release_date, country, mpaa) VALUES
 
 ('Игра престолов',
 'Рыцари, мертвецы и драконы — в эпической битве за судьбы мира. Сериал, который навсегда изменил телевидение', 
-'/icons/game_of_thrones', '2011', 'США', 'R'
+'/icons/game_of_thrones.jpg', '2011', 'США', 'R'
 ),
 
 ('Милый дом',
