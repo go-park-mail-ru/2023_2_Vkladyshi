@@ -49,12 +49,11 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 
 	found, err := a.core.CheckCsrfToken(csrfToken)
 	if err != nil {
-		a.lg.Error("get csrf error", "err", err.Error())
+		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
-
 	if csrfToken != "" && found {
 		w.Header().Set("X-CSRF-Token", csrfToken)
 		a.SendResponse(w, response)
