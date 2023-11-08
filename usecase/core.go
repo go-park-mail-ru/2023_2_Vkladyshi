@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/csrf"
@@ -19,6 +18,33 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
 )
+
+type ICore interface {
+	CreateSession(login string) (string, session.Session, error)
+	KillSession(sid string) error
+	FindActiveSession(sid string) (bool, error)
+	CreateUserAccount(login string, password string, name string, birthDate string, email string) error
+	FindUserAccount(login string, password string) (*profile.UserItem, bool, error)
+	FindUserByLogin(login string) (bool, error)
+	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]film.FilmItem, error)
+	GetFilms(start uint64, end uint64) ([]film.FilmItem, error)
+	GetFilm(filmId uint64) (*film.FilmItem, error)
+	GetFilmGenres(filmId uint64) ([]genre.GenreItem, error)
+	GetFilmRating(filmId uint64) (float64, uint64, error)
+	GetFilmDirectors(filmId uint64) ([]crew.CrewItem, error)
+	GetFilmScenarists(filmId uint64) ([]crew.CrewItem, error)
+	GetFilmCharacters(filmId uint64) ([]crew.Character, error)
+	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]comment.CommentItem, error)
+	GetActor(actorId uint64) (*crew.CrewItem, error)
+	GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error)
+	AddComment(filmId uint64, userLogin string, rating uint16, text string) error
+	GetUserName(sid string) (string, error)
+	GetUserProfile(login string) (*profile.UserItem, error)
+	GetGenre(genreId uint64) (string, error)
+	CheckCsrfToken(token string) (bool, error)
+	CreateCsrfToken() (string, error)
+	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) (*profile.UserItem, error)
+}
 
 type Core struct {
 	sessions   session.SessionRepo
@@ -197,7 +223,7 @@ func (core *Core) KillSession(sid string) error {
 
 func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
 	if matched, _ := regexp.MatchString(`@`, email); !matched {
-		return errors.InvalideEmail
+		return fmt.Errorf("Invalide email")
 	}
 	err := core.users.CreateUser(login, password, name, birthDate, email)
 	if err != nil {
@@ -375,12 +401,18 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 	return genre, nil
 }
 
-func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
+func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) (*profile.UserItem, error) {
 	err := core.users.EditProfile(prevLogin, login, password, email, birthDate, photo)
 	if err != nil {
-		core.lg.Error("Edit profile error", "err", err.Error())
-		return fmt.Errorf("Edit profile error: %w", err)
+		core.lg.Error("edit profile error", "err", err.Error())
+		return nil, fmt.Errorf("edit profile error: %w", err)
 	}
 
-	return nil
+	user, err := core.users.GetUserProfile(login)
+	if err != nil {
+		core.lg.Error("edit profile error. cant get user", "err", err.Error())
+		return nil, fmt.Errorf("cant get profile error: %w", err)
+	}
+
+	return user, nil
 }

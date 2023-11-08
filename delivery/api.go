@@ -9,12 +9,25 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase"
 )
 
 //go:generate mockgen -source=api.go -destination=mocks/mock.go
+
+type IApi interface {
+	SendResponse(w http.ResponseWriter, response Response)
+	Films(w http.ResponseWriter, r *http.Request)
+	LogoutSession(w http.ResponseWriter, r *http.Request)
+	AuthAccept(w http.ResponseWriter, r *http.Request)
+	Signin(w http.ResponseWriter, r *http.Request)
+	Signup(w http.ResponseWriter, r *http.Request)
+	Film(w http.ResponseWriter, r *http.Request)
+	Actor(w http.ResponseWriter, r *http.Request)
+	Comment(w http.ResponseWriter, r *http.Request)
+	AddComment(w http.ResponseWriter, r *http.Request)
+	Profile(w http.ResponseWriter, r *http.Request)
+}
 
 type API struct {
 	core usecase.ICore
@@ -274,7 +287,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 
 	found, err := a.core.FindUserByLogin(request.Login)
 	if err != nil {
-		a.lg.Error("Signup error", "err", err.Error())
+		a.lg.Error("signup error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -285,7 +298,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
-	if err == errors.InvalideEmail {
+	if err != nil {
 		a.lg.Error("create user error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 	}
@@ -314,7 +327,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	film, err := a.core.GetFilm(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -326,35 +339,35 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 	}
 	genres, err := a.core.GetFilmGenres(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
 	rating, number, err := a.core.GetFilmRating(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
 	directors, err := a.core.GetFilmDirectors(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
 	scenarists, err := a.core.GetFilmScenarists(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
 	characters, err := a.core.GetFilmCharacters(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -391,7 +404,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 
 	actor, err := a.core.GetActor(actorId)
 	if err != nil {
-		a.lg.Error("Actor error", "err", err.Error())
+		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -403,7 +416,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 	}
 	career, err := a.core.GetActorsCareer(actorId)
 	if err != nil {
-		a.lg.Error("Actor error", "err", err.Error())
+		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -447,7 +460,7 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 
 	comments, err := a.core.GetFilmComments(filmId, (page-1)*pageSize, pageSize)
 	if err != nil {
-		a.lg.Error("Comment", "err", err.Error())
+		a.lg.Error("comment", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -474,7 +487,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
+		a.lg.Error("add comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -482,7 +495,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 
 	login, err := a.core.GetUserName(session.Value)
 	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
+		a.lg.Error("add comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -505,7 +518,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 
 	err = a.core.AddComment(commentRequest.FilmId, login, commentRequest.Rating, commentRequest.Text)
 	if err != nil {
-		a.lg.Error("Add Comment error", "err", err.Error())
+		a.lg.Error("add comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 	}
 
@@ -524,7 +537,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 
 		login, err := a.core.GetUserName(session.Value)
 		if err != nil {
-			a.lg.Error("Get Profile error", "err", err.Error())
+			a.lg.Error("get profile error", "err", err.Error())
 		}
 
 		profile, err := a.core.GetUserProfile(login)
@@ -547,7 +560,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodPost {
-		response.Status = http.StatusUnauthorized
+		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
@@ -560,12 +573,12 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 
 	prevLogin, err := a.core.GetUserName(session.Value)
 	if err != nil {
-		a.lg.Error("Get Profile error", "err", err.Error())
+		a.lg.Error("get profile error", "err", err.Error())
 	}
 
 	err = r.ParseForm()
 	if err != nil {
-		a.lg.Error("Post profile error", "err", err.Error())
+		a.lg.Error("post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
@@ -576,7 +589,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	photo, handler, err := r.FormFile("photo")
 	if err != nil {
-		a.lg.Error("Post profile error", "err", err.Error())
+		a.lg.Error("post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
@@ -584,7 +597,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 
 	filePhoto, err := os.OpenFile("/home/ubuntu/frontend-project/avatars/"+handler.Filename, os.O_WRONLY|os.O_CREATE, 0666)
 	if err != nil {
-		a.lg.Error("Post profile error", "err", err.Error())
+		a.lg.Error("post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -593,18 +606,24 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 
 	_, err = io.Copy(filePhoto, photo)
 	if err != nil {
-		a.lg.Error("Post profile error", "err", err.Error())
+		a.lg.Error("post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
 
-	err = a.core.EditProfile(prevLogin, login, password, email, birthDate, "/avatars/"+handler.Filename)
+	user, err := a.core.EditProfile(prevLogin, login, password, email, birthDate, "/avatars/"+handler.Filename)
 	if err != nil {
-		a.lg.Error("Post profile error", "err", err.Error())
+		a.lg.Error("post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
+	}
+	profileResponse := ProfileResponse{
+		Email:     user.Email,
+		Photo:     user.Photo,
+		BirthDate: user.Birthdate,
+		Name:      user.Name,
 	}
 
 	err = a.core.KillSession(session.Value)
@@ -625,6 +644,6 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
-	r.Method = http.MethodGet
-	a.Profile(w, r)
+	response.Body = profileResponse
+	a.SendResponse(w, response)
 }
