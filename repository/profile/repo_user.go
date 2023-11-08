@@ -88,7 +88,7 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 func (repo *RepoPostgre) CreateUser(login string, password string, name string, birthDate string, email string) error {
 	_, err := repo.db.Exec(
 		"INSERT INTO profile(name, birth_date, photo, login, password, email, registration_date) "+
-			"VALUES($1, $2, '../../user_avatars/default.jpg', $3, $4, $5, CURRENT_TIMESTAMP)",
+			"VALUES($1, $2, '/avatars/default.jpg', $3, $4, $5, CURRENT_TIMESTAMP)",
 		name, birthDate, login, password, email)
 	if err != nil {
 		return fmt.Errorf("CreateUser err: %w", err)
