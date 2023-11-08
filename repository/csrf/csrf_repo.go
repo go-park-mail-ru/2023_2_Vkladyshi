@@ -10,9 +10,10 @@ import (
 	"github.com/go-redis/redis/v8"
 )
 
+var mutex sync.RWMutex
+
 type CsrfRepo struct {
 	csrfRedisClient *redis.Client
-	mutex           sync.RWMutex
 	Connection      bool
 }
 
