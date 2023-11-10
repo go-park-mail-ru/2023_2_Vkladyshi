@@ -37,4 +37,5 @@ type ICore interface {
 	CheckCsrfToken(ctx context.Context, token string) (bool, error)
 	CreateCsrfToken(ctx context.Context) (string, error)
 	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error
+	FindUsersComment(login string, filmId uint64) (bool, error)
 }

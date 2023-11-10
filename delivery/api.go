@@ -317,7 +317,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
-	if film == nil {
+	if film.Title == "" {
 		response.Status = http.StatusNotFound
 		a.SendResponse(w, response)
 		return
@@ -497,6 +497,19 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 
 	if err = json.Unmarshal(body, &commentRequest); err != nil {
 		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+
+	found, err := a.core.FindUsersComment(login, commentRequest.FilmId)
+	if err != nil {
+		a.lg.Error("find comment error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+	if found {
+		response.Status = http.StatusNotAcceptable
 		a.SendResponse(w, response)
 		return
 	}
