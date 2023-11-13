@@ -240,6 +240,8 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, cookie)
 	}
+	signinResponse := SigninResponse{Login: request.Login}
+	response.Body = signinResponse
 
 	a.SendResponse(w, response)
 }
