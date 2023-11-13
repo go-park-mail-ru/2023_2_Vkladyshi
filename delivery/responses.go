@@ -52,6 +52,6 @@ type ProfileResponse struct {
 	BirthDate string `json:"birthday"`
 }
 
-type SigninResponse struct {
+type AuthCheckResponse struct {
 	Login string `json:"login"`
 }

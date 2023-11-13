@@ -192,6 +192,16 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
+	login, err := a.core.GetUserName(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("auth accept error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.SendResponse(w, response)
+		return
+	}
+
+	authCheckResponse := AuthCheckResponse{Login: login}
+	response.Body = authCheckResponse
 
 	a.SendResponse(w, response)
 }
@@ -240,8 +250,6 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, cookie)
 	}
-	signinResponse := SigninResponse{Login: request.Login}
-	response.Body = signinResponse
 
 	a.SendResponse(w, response)
 }
