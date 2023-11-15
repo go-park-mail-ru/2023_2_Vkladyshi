@@ -196,18 +196,18 @@ func TestGetActor(t *testing.T) {
 	}
 	defer db.Close()
 
-	rows := sqlmock.NewRows([]string{"Id", "Name", "Birthdate", "Photo"})
+	rows := sqlmock.NewRows([]string{"Id", "Name", "Birthdate", "Photo", "Info"})
 
 	expect := []CrewItem{
-		{Id: 1, Name: "n1", Birthdate: "2003", Photo: "p1"},
+		{Id: 1, Name: "n1", Birthdate: "2003", Photo: "p1", Info: "i1"},
 	}
 
 	for _, item := range expect {
-		rows = rows.AddRow(item.Id, item.Name, item.Birthdate, item.Photo)
+		rows = rows.AddRow(item.Id, item.Name, item.Birthdate, item.Photo, item.Info)
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT id, name, birth_date, photo FROM crew WHERE id = $1")).
+		regexp.QuoteMeta("SELECT id, name, birth_date, photo, info FROM crew WHERE id = $1")).
 		WithArgs(1).
 		WillReturnRows(rows)
 
@@ -231,7 +231,7 @@ func TestGetActor(t *testing.T) {
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT id, name, birth_date, photo FROM crew WHERE id = $1")).
+		regexp.QuoteMeta("SELECT id, name, birth_date, photo, info FROM crew WHERE id = $1")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
