@@ -86,7 +86,7 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 
 	for rows.Next() {
 		post := CommentItem{}
-		err := rows.Scan(&post.Username, &post.Rating, &post.Comment, post.Photo)
+		err := rows.Scan(&post.Username, &post.Rating, &post.Comment, &post.Photo)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmRating scan err: %w", err)
 		}
