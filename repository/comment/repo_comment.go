@@ -13,7 +13,6 @@ import (
 )
 
 type ICommentRepo interface {
-	GetFilmRating(filmId uint64) (float64, uint64, error)
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error)
 	AddComment(filmId uint64, userId string, rating uint16, text string) error
 	FindUsersComment(login string, filmId uint64) (bool, error)
@@ -53,22 +52,6 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 
 		time.Sleep(time.Duration(timer) * time.Second)
 	}
-}
-
-func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
-	var rating sql.NullFloat64
-	var number sql.NullInt64
-	err := repo.db.QueryRow(
-		"SELECT AVG(rating), COUNT(rating) FROM users_comment "+
-			"WHERE id_film = $1", filmId).Scan(&rating, &number)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, 0, nil
-		}
-		return 0, 0, fmt.Errorf("GetFilmRating err: %w", err)
-	}
-
-	return rating.Float64, uint64(number.Int64), nil
 }
 
 func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error) {

@@ -16,6 +16,7 @@ type IFilmsRepo interface {
 	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]FilmItem, error)
 	GetFilm(filmId uint64) (*FilmItem, error)
+	GetFilmRating(filmId uint64) (float64, uint64, error)
 }
 
 type RepoPostgre struct {
@@ -121,4 +122,20 @@ func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {
 	}
 
 	return film, nil
+}
+
+func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
+	var rating sql.NullFloat64
+	var number sql.NullInt64
+	err := repo.db.QueryRow(
+		"SELECT AVG(rating), COUNT(rating) FROM users_comment "+
+			"WHERE id_film = $1", filmId).Scan(&rating, &number)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("GetFilmRating err: %w", err)
+	}
+
+	return rating.Float64, uint64(number.Int64), nil
 }

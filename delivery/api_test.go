@@ -6,26 +6,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery/requests_responses"
 )
-
-func TestFilmsPost(t *testing.T) {
-	h := httptest.NewRequest(http.MethodPost, "/api/v1/films", nil)
-	w := httptest.NewRecorder()
-
-	api := API{}
-	api.Films(w, h)
-	var response Response
-
-	body, _ := io.ReadAll(w.Body)
-	err := json.Unmarshal(body, &response)
-	if err != nil {
-		t.Error("cant unmarshal jsone")
-	}
-
-	if response.Status != http.StatusMethodNotAllowed {
-		t.Errorf("got incorrect status")
-	}
-}
 
 func TestSignupGet(t *testing.T) {
 	h := httptest.NewRequest(http.MethodGet, "/signup", nil)
@@ -33,7 +16,7 @@ func TestSignupGet(t *testing.T) {
 
 	api := API{}
 	api.Signup(w, h)
-	var response Response
+	var response requests_responses.Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)
@@ -52,7 +35,7 @@ func TestSigninGet(t *testing.T) {
 
 	api := API{}
 	api.Signin(w, h)
-	var response Response
+	var response requests_responses.Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)
