@@ -9,7 +9,7 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase/films_usecase"
 )
 
-func main() {
+func init() {
 	logFile, _ := os.Create("log.log")
 	lg := slog.New(slog.NewJSONHandler(logFile, nil))
 
