@@ -16,6 +16,7 @@ type IApi interface {
 	Films(w http.ResponseWriter, r *http.Request)
 	Film(w http.ResponseWriter, r *http.Request)
 	Actor(w http.ResponseWriter, r *http.Request)
+	FindFilm(w http.ResponseWriter, r *http.Request)
 }
 
 type API struct {
@@ -240,4 +241,21 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 
 	response.Body = actorResponse
 	a.SendResponse(w, response)
+}
+
+func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
+	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		a.lg.Error("Post profile error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
 }
