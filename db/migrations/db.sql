@@ -76,3 +76,26 @@ CREATE TABLE IF NOT EXISTS users_comment (
 	
 	PRIMARY KEY(id_user, id_film)
 );
+
+
+CREATE TABLE IF NOT EXISTS users_favorite_actor (
+	id_user SERIAL NOT NULL REFERENCES profile(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+	id_actor SERIAL NOT NULL REFERENCES crew(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+
+	PRIMARY KEY(id_user, id_actor)
+);
+
+CREATE TABLE IF NOT EXISTS users_favorite_film (
+	id_user SERIAL NOT NULL REFERENCES profile(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+	id_film SERIAL NOT NULL REFERENCES film(id)
+		ON DELETE CASCADE
+		ON UPDATE CASCADE,
+
+	PRIMARY KEY(id_user, id_film)
+);
