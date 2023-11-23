@@ -1,15 +1,15 @@
-package films_main
+package main
 
 import (
 	"log/slog"
 	"os"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery/films_delivery"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase/films_usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/delivery"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/usecase"
 )
 
-func init() {
+func main() {
 	logFile, _ := os.Create("log.log")
 	lg := slog.New(slog.NewJSONHandler(logFile, nil))
 
@@ -19,12 +19,12 @@ func init() {
 		return
 	}
 
-	core, err := films_usecase.GetCore(*config, lg)
+	core, err := usecase.GetCore(*config, lg)
 	if err != nil {
 		lg.Error("cant create core")
 		return
 	}
-	api := films_delivery.GetApi(core, lg)
+	api := delivery.GetApi(core, lg)
 
 	api.ListenAndServe()
 }

@@ -1,4 +1,4 @@
-package comment
+package models
 
 type CommentItem struct {
 	Username string `json:"name"`

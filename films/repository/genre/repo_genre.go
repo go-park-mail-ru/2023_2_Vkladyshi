@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
 
 type IGenreRepo interface {
-	GetFilmGenres(filmId uint64) ([]GenreItem, error)
+	GetFilmGenres(filmId uint64) ([]models.GenreItem, error)
 	GetGenreById(genreId uint64) (string, error)
 }
 
@@ -53,8 +54,8 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]GenreItem, error) {
-	genres := []GenreItem{}
+func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]models.GenreItem, error) {
+	genres := []models.GenreItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT genre.id, genre.title FROM genre "+
@@ -66,7 +67,7 @@ func (repo *RepoPostgre) GetFilmGenres(filmId uint64) ([]GenreItem, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		post := GenreItem{}
+		post := models.GenreItem{}
 		err := rows.Scan(&post.Id, &post.Title)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmGenres scan err: %w", err)

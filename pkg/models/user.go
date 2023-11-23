@@ -1,4 +1,4 @@
-package profile
+package models
 
 type UserItem struct {
 	Id               uint64 `json:"id"`

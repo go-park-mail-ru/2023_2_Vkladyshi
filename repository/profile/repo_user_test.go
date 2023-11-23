@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 func TestGetUser(t *testing.T) {
@@ -18,11 +19,11 @@ func TestGetUser(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"photo", "login"})
 
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Photo: "url1",
 		Login: "l1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login, item.Photo)
@@ -80,10 +81,10 @@ func TestFindUser(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"login"})
 
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Login: "l1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login)
@@ -136,14 +137,14 @@ func TestCreateUser(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"login"})
 
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Login:     "l1",
 		Password:  "p1",
 		Birthdate: "2003-10-08",
 		Name:      "n1",
 		Email:     "e1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login)
@@ -194,14 +195,14 @@ func TestEditProfile(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"login"})
 
 	prev := "l0"
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Login:     "l1",
 		Password:  "p1",
 		Birthdate: "2003-10-08",
 		Email:     "e1",
 		Photo:     "ph1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login)

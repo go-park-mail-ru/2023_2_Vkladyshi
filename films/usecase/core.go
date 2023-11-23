@@ -1,27 +1,28 @@
-package films_usecase
+package usecase
 
 import (
 	"fmt"
 	"log/slog"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profession"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/crew"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/film"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/genre"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/profession"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 type ICore interface {
-	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]film.FilmItem, error)
-	GetFilms(start uint64, end uint64) ([]film.FilmItem, error)
-	GetFilm(filmId uint64) (*film.FilmItem, error)
-	GetFilmGenres(filmId uint64) ([]genre.GenreItem, error)
+	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error)
+	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
+	GetFilm(filmId uint64) (*models.FilmItem, error)
+	GetFilmGenres(filmId uint64) ([]models.GenreItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
-	GetFilmDirectors(filmId uint64) ([]crew.CrewItem, error)
-	GetFilmScenarists(filmId uint64) ([]crew.CrewItem, error)
-	GetFilmCharacters(filmId uint64) ([]crew.Character, error)
-	GetActor(actorId uint64) (*crew.CrewItem, error)
-	GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error)
+	GetFilmDirectors(filmId uint64) ([]models.CrewItem, error)
+	GetFilmScenarists(filmId uint64) ([]models.CrewItem, error)
+	GetFilmCharacters(filmId uint64) ([]models.Character, error)
+	GetActor(actorId uint64) (*models.CrewItem, error)
+	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
 }
 
@@ -64,7 +65,7 @@ func GetCore(cfg_sql configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
 	return &core, nil
 }
 
-func (core *Core) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]film.FilmItem, error) {
+func (core *Core) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error) {
 	films, err := core.films.GetFilmsByGenre(genre, start, end)
 	if err != nil {
 		core.lg.Error("failed to get films from db", "err", err.Error())
@@ -74,7 +75,7 @@ func (core *Core) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]fil
 	return films, nil
 }
 
-func (core *Core) GetFilms(start uint64, end uint64) ([]film.FilmItem, error) {
+func (core *Core) GetFilms(start uint64, end uint64) ([]models.FilmItem, error) {
 	films, err := core.films.GetFilms(start, end)
 	if err != nil {
 		core.lg.Error("failed to get films from db", "err", err.Error())
@@ -84,7 +85,7 @@ func (core *Core) GetFilms(start uint64, end uint64) ([]film.FilmItem, error) {
 	return films, nil
 }
 
-func (core *Core) GetFilm(filmId uint64) (*film.FilmItem, error) {
+func (core *Core) GetFilm(filmId uint64) (*models.FilmItem, error) {
 	film, err := core.films.GetFilm(filmId)
 	if err != nil {
 		core.lg.Error("Get Film error", "err", err.Error())
@@ -94,7 +95,7 @@ func (core *Core) GetFilm(filmId uint64) (*film.FilmItem, error) {
 	return film, nil
 }
 
-func (core *Core) GetFilmGenres(filmId uint64) ([]genre.GenreItem, error) {
+func (core *Core) GetFilmGenres(filmId uint64) ([]models.GenreItem, error) {
 	genres, err := core.genres.GetFilmGenres(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Genres error", "err", err.Error())
@@ -114,7 +115,7 @@ func (core *Core) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	return rating, number, nil
 }
 
-func (core *Core) GetFilmDirectors(filmId uint64) ([]crew.CrewItem, error) {
+func (core *Core) GetFilmDirectors(filmId uint64) ([]models.CrewItem, error) {
 	directors, err := core.crew.GetFilmDirectors(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Directors error", "err", err.Error())
@@ -124,7 +125,7 @@ func (core *Core) GetFilmDirectors(filmId uint64) ([]crew.CrewItem, error) {
 	return directors, nil
 }
 
-func (core *Core) GetFilmScenarists(filmId uint64) ([]crew.CrewItem, error) {
+func (core *Core) GetFilmScenarists(filmId uint64) ([]models.CrewItem, error) {
 	scenarists, err := core.crew.GetFilmScenarists(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Scenarists error", "err", err.Error())
@@ -134,7 +135,7 @@ func (core *Core) GetFilmScenarists(filmId uint64) ([]crew.CrewItem, error) {
 	return scenarists, nil
 }
 
-func (core *Core) GetFilmCharacters(filmId uint64) ([]crew.Character, error) {
+func (core *Core) GetFilmCharacters(filmId uint64) ([]models.Character, error) {
 	characters, err := core.crew.GetFilmCharacters(filmId)
 	if err != nil {
 		core.lg.Error("Get Film Characters error", "err", err.Error())
@@ -144,7 +145,7 @@ func (core *Core) GetFilmCharacters(filmId uint64) ([]crew.Character, error) {
 	return characters, nil
 }
 
-func (core *Core) GetActor(actorId uint64) (*crew.CrewItem, error) {
+func (core *Core) GetActor(actorId uint64) (*models.CrewItem, error) {
 	actor, err := core.crew.GetActor(actorId)
 	if err != nil {
 		core.lg.Error("Get Actor error", "err", err.Error())
@@ -154,7 +155,7 @@ func (core *Core) GetActor(actorId uint64) (*crew.CrewItem, error) {
 	return actor, nil
 }
 
-func (core *Core) GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error) {
+func (core *Core) GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error) {
 	career, err := core.profession.GetActorsProfessions(actorId)
 	if err != nil {
 		core.lg.Error("Get Actors Career error", "err", err.Error())

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 func TestGetFilmDirectors(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGetFilmDirectors(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Name", "Photo"})
 
-	expect := []CrewItem{
+	expect := []models.CrewItem{
 		{Id: 1, Name: "n1", Photo: "p1"},
 	}
 
@@ -78,7 +79,7 @@ func TestGetFilmScenarists(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Name", "Photo"})
 
-	expect := []CrewItem{
+	expect := []models.CrewItem{
 		{Id: 1, Name: "n1", Photo: "p1"},
 	}
 
@@ -138,7 +139,7 @@ func TestGetFilmCharacters(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Name", "Photo", "CharacterName"})
 
-	expect := []Character{
+	expect := []models.Character{
 		{IdActor: 1, NameActor: "n1", ActorPhoto: "p1", NameCharacter: "chn1"},
 	}
 
@@ -198,7 +199,7 @@ func TestGetActor(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Name", "Birthdate", "Photo", "Info"})
 
-	expect := []CrewItem{
+	expect := []models.CrewItem{
 		{Id: 1, Name: "n1", Birthdate: "2003", Photo: "p1", Info: "i1"},
 	}
 

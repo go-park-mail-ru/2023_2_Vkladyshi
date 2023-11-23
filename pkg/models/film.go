@@ -1,4 +1,4 @@
-package film
+package models
 
 type FilmItem struct {
 	Id          uint64 `json:"id"`

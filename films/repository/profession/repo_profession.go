@@ -8,10 +8,11 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 type IProfessionRepo interface {
-	GetActorsProfessions(actorId uint64) ([]ProfessionItem, error)
+	GetActorsProfessions(actorId uint64) ([]models.ProfessionItem, error)
 }
 
 type RepoPostgre struct {
@@ -50,8 +51,8 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]ProfessionItem, error) {
-	professions := []ProfessionItem{}
+func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]models.ProfessionItem, error) {
+	professions := []models.ProfessionItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT DISTINCT title FROM profession "+
@@ -63,7 +64,7 @@ func (repo *RepoPostgre) GetActorsProfessions(actorId uint64) ([]ProfessionItem,
 	defer rows.Close()
 
 	for rows.Next() {
-		post := ProfessionItem{}
+		post := models.ProfessionItem{}
 		err := rows.Scan(&post.Title)
 		if err != nil {
 			return nil, fmt.Errorf("GetActorsProfessions scan err: %w", err)

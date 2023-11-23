@@ -8,14 +8,15 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
 
 type IFilmsRepo interface {
-	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]FilmItem, error)
-	GetFilms(start uint64, end uint64) ([]FilmItem, error)
-	GetFilm(filmId uint64) (*FilmItem, error)
+	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error)
+	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
+	GetFilm(filmId uint64) (*models.FilmItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 }
 
@@ -55,8 +56,8 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]FilmItem, error) {
-	films := make([]FilmItem, 0, end-start)
+func (repo *RepoPostgre) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error) {
+	films := make([]models.FilmItem, 0, end-start)
 
 	rows, err := repo.db.Query(
 		"SELECT film.id, film.title, poster FROM film "+
@@ -71,7 +72,7 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre uint64, start uint64, end uint64)
 	defer rows.Close()
 
 	for rows.Next() {
-		post := FilmItem{}
+		post := models.FilmItem{}
 		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmsByGenre scan err: %w", err)
@@ -82,8 +83,8 @@ func (repo *RepoPostgre) GetFilmsByGenre(genre uint64, start uint64, end uint64)
 	return films, nil
 }
 
-func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) {
-	films := make([]FilmItem, 0, end-start)
+func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]models.FilmItem, error) {
+	films := make([]models.FilmItem, 0, end-start)
 
 	rows, err := repo.db.Query(
 		"SELECT film.id, film.title, poster FROM film "+
@@ -96,7 +97,7 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) 
 	defer rows.Close()
 
 	for rows.Next() {
-		post := FilmItem{}
+		post := models.FilmItem{}
 		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilms scan err: %w", err)
@@ -107,8 +108,8 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]FilmItem, error) 
 	return films, nil
 }
 
-func (repo *RepoPostgre) GetFilm(filmId uint64) (*FilmItem, error) {
-	film := &FilmItem{}
+func (repo *RepoPostgre) GetFilm(filmId uint64) (*models.FilmItem, error) {
+	film := &models.FilmItem{}
 	err := repo.db.QueryRow(
 		"SELECT * FROM film "+
 			"WHERE id = $1", filmId).

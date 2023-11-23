@@ -8,15 +8,16 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
 
 type IUserRepo interface {
-	GetUser(login string, password string) (*UserItem, bool, error)
+	GetUser(login string, password string) (*models.UserItem, bool, error)
 	FindUser(login string) (bool, error)
 	CreateUser(login string, password string, name string, birthDate string, email string) error
-	GetUserProfile(login string) (*UserItem, error)
+	GetUserProfile(login string) (*models.UserItem, error)
 	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error
 }
 
@@ -56,8 +57,8 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool, error) {
-	post := &UserItem{}
+func (repo *RepoPostgre) GetUser(login string, password string) (*models.UserItem, bool, error) {
+	post := &models.UserItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT login, photo FROM profile "+
@@ -73,7 +74,7 @@ func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool
 }
 
 func (repo *RepoPostgre) FindUser(login string) (bool, error) {
-	post := &UserItem{}
+	post := &models.UserItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT login FROM profile "+
@@ -100,8 +101,8 @@ func (repo *RepoPostgre) CreateUser(login string, password string, name string, 
 	return nil
 }
 
-func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
-	post := &UserItem{}
+func (repo *RepoPostgre) GetUserProfile(login string) (*models.UserItem, error) {
+	post := &models.UserItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT name, birth_date, login, email, photo FROM profile "+

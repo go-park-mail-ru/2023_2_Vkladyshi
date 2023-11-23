@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 func TestGetFilmComments(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGetFilmComments(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Login", "Rating", "Comment", "Photo"})
 
-	expect := []CommentItem{
+	expect := []models.CommentItem{
 		{Username: "l1", Rating: 4, Comment: "c1", Photo: "p1"},
 	}
 
@@ -76,7 +77,7 @@ func TestAddComment(t *testing.T) {
 	}
 	defer db.Close()
 
-	testComment := CommentItem{
+	testComment := models.CommentItem{
 		Username: "l1",
 		IdFilm:   1,
 		Rating:   1,

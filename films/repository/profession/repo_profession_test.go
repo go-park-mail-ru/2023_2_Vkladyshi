@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 func TestGetActorProfessions(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGetActorProfessions(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Title"})
 
-	expect := []ProfessionItem{
+	expect := []models.ProfessionItem{
 		{Title: "p1"},
 	}
 

@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery/requests_responses"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase"
 )
 
@@ -41,7 +41,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 }
 
 func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	csrfToken := r.Header.Get("x-csrf-token")
 
@@ -77,7 +77,7 @@ func (a *API) ListenAndServe() {
 	}
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response requests_responses.Response) {
+func (a *API) SendResponse(w http.ResponseWriter, response requests.Response) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -93,7 +93,7 @@ func (a *API) SendResponse(w http.ResponseWriter, response requests_responses.Re
 }
 
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
@@ -120,7 +120,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	var authorized bool
 
 	session, err := r.Cookie("session_id")
@@ -141,20 +141,20 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authCheckResponse := requests_responses.AuthCheckResponse{Login: login}
+	authCheckResponse := requests.AuthCheckResponse{Login: login}
 	response.Body = authCheckResponse
 
 	a.SendResponse(w, response)
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
-	var request requests_responses.SigninRequest
+	var request requests.SigninRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -196,14 +196,14 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}
 
-	var request requests_responses.SignupRequest
+	var request requests.SignupRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -247,7 +247,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -277,14 +277,14 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	commentsResponse := requests_responses.CommentResponse{Comments: comments}
+	commentsResponse := requests.CommentResponse{Comments: comments}
 
 	response.Body = commentsResponse
 	a.SendResponse(w, response)
 }
 
 func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -312,7 +312,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var commentRequest requests_responses.CommentRequest
+	var commentRequest requests.CommentRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -350,7 +350,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method == http.MethodGet {
 		session, err := r.Cookie("session_id")
 		if err == http.ErrNoCookie {
@@ -371,7 +371,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		profileResponse := requests_responses.ProfileResponse{
+		profileResponse := requests.ProfileResponse{
 			Email:     profile.Email,
 			Name:      profile.Name,
 			Login:     profile.Login,

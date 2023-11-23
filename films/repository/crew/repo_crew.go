@@ -8,15 +8,16 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
 
 type ICrewRepo interface {
-	GetFilmDirectors(filmId uint64) ([]CrewItem, error)
-	GetFilmScenarists(filmId uint64) ([]CrewItem, error)
-	GetFilmCharacters(filmId uint64) ([]Character, error)
-	GetActor(actorId uint64) (*CrewItem, error)
+	GetFilmDirectors(filmId uint64) ([]models.CrewItem, error)
+	GetFilmScenarists(filmId uint64) ([]models.CrewItem, error)
+	GetFilmCharacters(filmId uint64) ([]models.Character, error)
+	GetActor(actorId uint64) (*models.CrewItem, error)
 }
 
 type RepoPostgre struct {
@@ -55,8 +56,8 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]CrewItem, error) {
-	directors := []CrewItem{}
+func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]models.CrewItem, error) {
+	directors := []models.CrewItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT crew.id, name, photo  FROM crew "+
@@ -69,7 +70,7 @@ func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]CrewItem, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		post := CrewItem{}
+		post := models.CrewItem{}
 		err := rows.Scan(&post.Id, &post.Name, &post.Photo)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmDirectors scan err: %w", err)
@@ -80,8 +81,8 @@ func (repo *RepoPostgre) GetFilmDirectors(filmId uint64) ([]CrewItem, error) {
 	return directors, nil
 }
 
-func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]CrewItem, error) {
-	scenarists := []CrewItem{}
+func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]models.CrewItem, error) {
+	scenarists := []models.CrewItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT crew.id, name, photo  FROM crew "+
@@ -94,7 +95,7 @@ func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]CrewItem, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		post := CrewItem{}
+		post := models.CrewItem{}
 		err := rows.Scan(&post.Id, &post.Name, &post.Photo)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmScenarists scan err: %w", err)
@@ -105,8 +106,8 @@ func (repo *RepoPostgre) GetFilmScenarists(filmId uint64) ([]CrewItem, error) {
 	return scenarists, nil
 }
 
-func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
-	characters := []Character{}
+func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]models.Character, error) {
+	characters := []models.Character{}
 
 	rows, err := repo.db.Query(
 		"SELECT crew.id, name, photo, person_in_film.character_name FROM crew "+
@@ -119,7 +120,7 @@ func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		post := Character{}
+		post := models.Character{}
 		err := rows.Scan(&post.IdActor, &post.NameActor, &post.ActorPhoto, &post.NameCharacter)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmCharacters scan err: %w", err)
@@ -130,8 +131,8 @@ func (repo *RepoPostgre) GetFilmCharacters(filmId uint64) ([]Character, error) {
 	return characters, nil
 }
 
-func (repo *RepoPostgre) GetActor(actorId uint64) (*CrewItem, error) {
-	actor := &CrewItem{}
+func (repo *RepoPostgre) GetActor(actorId uint64) (*models.CrewItem, error) {
+	actor := &models.CrewItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT id, name, birth_date, photo, info FROM crew "+

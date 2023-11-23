@@ -1,4 +1,4 @@
-package films_delivery
+package delivery
 
 import (
 	"encoding/json"
@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery/requests_responses"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
 func TestFilmsPost(t *testing.T) {
@@ -16,7 +16,7 @@ func TestFilmsPost(t *testing.T) {
 
 	api := API{}
 	api.Films(w, h)
-	var response requests_responses.Response
+	var response requests.Response
 
 	body, _ := io.ReadAll(w.Body)
 	err := json.Unmarshal(body, &response)

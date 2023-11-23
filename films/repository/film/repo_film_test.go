@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 func TestGetFilmsByGenre(t *testing.T) {
@@ -18,7 +19,7 @@ func TestGetFilmsByGenre(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Title", "Poster"})
 
-	expect := []FilmItem{
+	expect := []models.FilmItem{
 		{Id: 1, Title: "t1", Poster: "url1"},
 	}
 
@@ -75,7 +76,7 @@ func TestGetFilms(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Title", "Poster"})
 
-	expect := []FilmItem{
+	expect := []models.FilmItem{
 		{Id: 1, Title: "t1", Poster: "url1"},
 	}
 
@@ -129,7 +130,7 @@ func TestGetFilm(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"Id", "Title", "Info", "Poster", "ReleaseDate", "Country", "Mpaa"})
 
-	expect := []FilmItem{
+	expect := []models.FilmItem{
 		{Id: 1, Title: "t1", Info: "i1", Poster: "url1", ReleaseDate: "date1", Country: "c1", Mpaa: "12"},
 	}
 

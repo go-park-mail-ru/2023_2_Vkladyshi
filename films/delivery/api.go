@@ -1,4 +1,4 @@
-package films_delivery
+package delivery
 
 import (
 	"encoding/json"
@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/delivery/requests_responses"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase/films_usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
 type IApi interface {
-	SendResponse(w http.ResponseWriter, response requests_responses.Response)
+	SendResponse(w http.ResponseWriter, response requests.Response)
 	Films(w http.ResponseWriter, r *http.Request)
 	Film(w http.ResponseWriter, r *http.Request)
 	Actor(w http.ResponseWriter, r *http.Request)
@@ -20,12 +20,12 @@ type IApi interface {
 }
 
 type API struct {
-	core films_usecase.ICore
+	core usecase.ICore
 	lg   *slog.Logger
 	mx   *http.ServeMux
 }
 
-func GetApi(c *films_usecase.Core, l *slog.Logger) *API {
+func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	api := &API{
 		core: c,
 		lg:   l.With("module", "api"),
@@ -47,7 +47,7 @@ func (a *API) ListenAndServe() {
 	}
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response requests_responses.Response) {
+func (a *API) SendResponse(w http.ResponseWriter, response requests.Response) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -63,7 +63,7 @@ func (a *API) SendResponse(w http.ResponseWriter, response requests_responses.Re
 }
 
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
@@ -85,7 +85,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		genreId = 0
 	}
 
-	var films []film.FilmItem
+	var films []models.FilmItem
 
 	if genreId == 0 {
 		films, err = a.core.GetFilms(uint64((page-1)*pageSize), pageSize)
@@ -106,7 +106,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
-	filmsResponse := requests_responses.FilmsResponse{
+	filmsResponse := requests.FilmsResponse{
 		Page:           page,
 		PageSize:       pageSize,
 		Total:          uint64(len(films)),
@@ -119,7 +119,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -181,7 +181,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filmResponse := requests_responses.FilmResponse{
+	filmResponse := requests.FilmResponse{
 		Film:       *film,
 		Genres:     genres,
 		Rating:     rating,
@@ -196,7 +196,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
@@ -230,7 +230,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actorResponse := requests_responses.ActorResponse{
+	actorResponse := requests.ActorResponse{
 		Name:      actor.Name,
 		Photo:     actor.Photo,
 		BirthDate: actor.Birthdate,
@@ -244,7 +244,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
-	response := requests_responses.Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)

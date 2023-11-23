@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
 
 type ICommentRepo interface {
-	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error)
+	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error)
 	AddComment(filmId uint64, userId string, rating uint16, text string) error
 	FindUsersComment(login string, filmId uint64) (bool, error)
 }
@@ -54,8 +55,8 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error) {
-	comments := []CommentItem{}
+func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error) {
+	comments := []models.CommentItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT profile.login, rating, comment, profile.photo FROM users_comment "+
@@ -68,7 +69,7 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 	defer rows.Close()
 
 	for rows.Next() {
-		post := CommentItem{}
+		post := models.CommentItem{}
 		err := rows.Scan(&post.Username, &post.Rating, &post.Comment, &post.Photo)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmRating scan err: %w", err)

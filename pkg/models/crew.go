@@ -1,4 +1,4 @@
-package crew
+package models
 
 type CrewItem struct {
 	Id        uint64 `json:"id"`

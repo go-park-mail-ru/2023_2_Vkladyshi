@@ -1,4 +1,4 @@
-package genre
+package models
 
 type GenreItem struct {
 	Id    uint64 `json:"genre_id"`

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -53,7 +54,7 @@ func GetSessionRepo(sessionCfg configs.DbRedisCfg, lg *slog.Logger) (*SessionRep
 	return &sessionRepo, nil
 }
 
-func (redisRepo *SessionRepo) AddSession(ctx context.Context, active Session, lg *slog.Logger) (bool, error) {
+func (redisRepo *SessionRepo) AddSession(ctx context.Context, active models.Session, lg *slog.Logger) (bool, error) {
 	if !redisRepo.Connection {
 		lg.Error("Redis session connection lost")
 		return false, nil
