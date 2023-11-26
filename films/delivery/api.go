@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -10,14 +11,6 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
-
-type IApi interface {
-	SendResponse(w http.ResponseWriter, response requests.Response)
-	Films(w http.ResponseWriter, r *http.Request)
-	Film(w http.ResponseWriter, r *http.Request)
-	Actor(w http.ResponseWriter, r *http.Request)
-	FindFilm(w http.ResponseWriter, r *http.Request)
-}
 
 type API struct {
 	core usecase.ICore
@@ -34,6 +27,12 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/api/v1/films", api.Films)
 	mx.HandleFunc("/api/v1/film", api.Film)
 	mx.HandleFunc("/api/v1/actor", api.Actor)
+	mx.HandleFunc("/api/v1/favorite/films", api.FavoriteFilms)
+	mx.HandleFunc("/api/v1/favorite/film/add", api.FavoriteFilmsAdd)
+	mx.HandleFunc("/api/v1/favorite/film/remove", api.FavoriteFilmsRemove)
+	mx.HandleFunc("/api/v1/favorite/actors", api.FavoriteActors)
+	mx.HandleFunc("/api/v1/favorite/actor/add", api.FavoriteActorsAdd)
+	mx.HandleFunc("/api/v1/favorite/actor/remove", api.FavoriteActorsRemove)
 
 	api.mx = mx
 
@@ -87,25 +86,14 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 
 	var films []models.FilmItem
 
-	if genreId == 0 {
-		films, err = a.core.GetFilms(uint64((page-1)*pageSize), pageSize)
-	} else {
-		films, err = a.core.GetFilmsByGenre(genreId, uint64((page-1)*pageSize), pageSize)
-	}
+	films, genre, err := a.core.GetFilmsAndGenreTitle(genreId, uint64((page-1)*pageSize), pageSize)
 	if err != nil {
-		a.lg.Error("Films error", "err", err.Error())
+		a.lg.Error("get films error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
 
-	genre, err := a.core.GetGenre(genreId)
-	if err != nil {
-		a.lg.Error("Films get genre error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
 	filmsResponse := requests.FilmsResponse{
 		Page:           page,
 		PageSize:       pageSize,
@@ -128,69 +116,30 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
 	if err != nil {
+		if errors.Is(err, errors.New("not found")) {
+			response.Status = http.StatusNotFound
+			a.SendResponse(w, response)
+			return
+		}
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
 	}
 
-	film, err := a.core.GetFilm(filmId)
+	film, err := a.core.GetFilmInfo(filmId)
 	if err != nil {
 		a.lg.Error("Film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
 	}
-	if film.Title == "" {
+	if film.Film.Title == "" {
 		response.Status = http.StatusNotFound
 		a.SendResponse(w, response)
 		return
 	}
-	genres, err := a.core.GetFilmGenres(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	rating, number, err := a.core.GetFilmRating(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	directors, err := a.core.GetFilmDirectors(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	scenarists, err := a.core.GetFilmScenarists(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	characters, err := a.core.GetFilmCharacters(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
 
-	filmResponse := requests.FilmResponse{
-		Film:       *film,
-		Genres:     genres,
-		Rating:     rating,
-		Number:     number,
-		Directors:  directors,
-		Scenarists: scenarists,
-		Characters: characters,
-	}
-	response.Body = filmResponse
+	response.Body = film
 
 	a.SendResponse(w, response)
 }
@@ -205,12 +154,17 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 
 	actorId, err := strconv.ParseUint(r.URL.Query().Get("actor_id"), 10, 64)
 	if err != nil {
+		if errors.Is(err, errors.New("not found")) {
+			response.Status = http.StatusNotFound
+			a.SendResponse(w, response)
+			return
+		}
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
 	}
 
-	actor, err := a.core.GetActor(actorId)
+	actor, err := a.core.GetActorInfo(actorId)
 	if err != nil {
 		a.lg.Error("Actor error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
@@ -222,24 +176,8 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
-	career, err := a.core.GetActorsCareer(actorId)
-	if err != nil {
-		a.lg.Error("Actor error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
 
-	actorResponse := requests.ActorResponse{
-		Name:      actor.Name,
-		Photo:     actor.Photo,
-		BirthDate: actor.Birthdate,
-		Country:   actor.Country,
-		Info:      actor.Info,
-		Career:    career,
-	}
-
-	response.Body = actorResponse
+	response.Body = actor
 	a.SendResponse(w, response)
 }
 
@@ -251,10 +189,67 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := r.ParseMultipartForm(10 << 20)
-	if err != nil {
-		a.lg.Error("Post profile error", "err", err.Error())
-		response.Status = http.StatusBadRequest
+	/*title := r.URL.Query().Get("title")
+	dateFrom := r.URL.Query().Get("actor_id")
+	dateTo := r.URL.Query().Get("actor_id")
+	ratingFrom := r.URL.Query().Get("actor_id")
+	ratingTo := r.URL.Query().Get("actor_id")
+	mpaa := r.URL.Query().Get("actor_id")
+	genres := r.URL.Query().Get("actor_id")
+	actors := r.URL.Query().Get("actor_id")
+
+	a.core.SearchFilm(title, dateFrom, dateTo, ratingFrom, ratingTo)*/
+}
+
+func (a *API) FavoriteFilmsAdd(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+}
+
+func (a *API) FavoriteFilmsRemove(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+}
+
+func (a *API) FavoriteFilms(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+}
+
+func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+}
+
+func (a *API) FavoriteActorsRemove(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.SendResponse(w, response)
+		return
+	}
+}
+
+func (a *API) FavoriteActors(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
 		a.SendResponse(w, response)
 		return
 	}

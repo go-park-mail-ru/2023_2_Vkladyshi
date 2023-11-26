@@ -68,3 +68,18 @@ func ReadConfig() (*DbDsnCfg, error) {
 
 	return &dsnConfig, nil
 }
+
+func ReadFilmConfig() (*DbDsnCfg, error) {
+	dsnConfig := DbDsnCfg{}
+	dsnFile, err := os.ReadFile("../../configs/db_film_dsn.yaml")
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(dsnFile, &dsnConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dsnConfig, nil
+}

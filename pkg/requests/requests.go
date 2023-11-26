@@ -25,3 +25,13 @@ type EditProfileRequest struct {
 	Photo    []byte `json:"photo"`
 	Password string `json:"password"`
 }
+
+type FindFilmRequest struct {
+	Title      string   `json:"title"`
+	DateFrom   string   `json:"date_from"`
+	DateTo     string   `json:"date_to"`
+	RatingFrom float32  `json:"rating_from"`
+	RatingTo   float32  `json:"rating_to"`
+	Mpaa       string   `json:"mpaa"`
+	Actors     []string `json:"actors"`
+}

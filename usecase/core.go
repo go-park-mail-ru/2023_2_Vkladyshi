@@ -245,8 +245,8 @@ func (core *Core) EditProfile(prevLogin string, login string, password string, e
 	return nil
 }
 
-func (core *Core) FindUsersComment(login string, filmId uint64) (bool, error) {
-	found, err := core.comments.FindUsersComment(login, filmId)
+func (core *Core) HasUsersComment(login string, filmId uint64) (bool, error) {
+	found, err := core.comments.HasUsersComment(login, filmId)
 	if err != nil {
 		core.lg.Error("find users comment error", "err", err.Error())
 		return false, fmt.Errorf("find users comment error: %w", err)

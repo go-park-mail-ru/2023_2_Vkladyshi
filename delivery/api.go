@@ -327,7 +327,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	found, err := a.core.FindUsersComment(login, commentRequest.FilmId)
+	found, err := a.core.HasUsersComment(login, commentRequest.FilmId)
 	if err != nil {
 		a.lg.Error("find comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError

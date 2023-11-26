@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 
@@ -10,18 +11,13 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/genre"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
 type ICore interface {
-	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error)
-	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
-	GetFilm(filmId uint64) (*models.FilmItem, error)
-	GetFilmGenres(filmId uint64) ([]models.GenreItem, error)
-	GetFilmRating(filmId uint64) (float64, uint64, error)
-	GetFilmDirectors(filmId uint64) ([]models.CrewItem, error)
-	GetFilmScenarists(filmId uint64) ([]models.CrewItem, error)
-	GetFilmCharacters(filmId uint64) ([]models.Character, error)
-	GetActor(actorId uint64) (*models.CrewItem, error)
+	GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error)
+	GetFilmInfo(filmId uint64) (*requests.FilmResponse, error)
+	GetActorInfo(actorId uint64) (*requests.ActorResponse, error)
 	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
 }
@@ -34,23 +30,23 @@ type Core struct {
 	profession profession.IProfessionRepo
 }
 
-func GetCore(cfg_sql configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
-	films, err := film.GetFilmRepo(cfg_sql, lg)
+func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
+	films, err := film.GetFilmRepo(*cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	genres, err := genre.GetGenreRepo(cfg_sql, lg)
+	genres, err := genre.GetGenreRepo(*cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	crew, err := crew.GetCrewRepo(cfg_sql, lg)
+	crew, err := crew.GetCrewRepo(*cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	professions, err := profession.GetProfessionRepo(cfg_sql, lg)
+	professions, err := profession.GetProfessionRepo(*cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
@@ -65,94 +61,99 @@ func GetCore(cfg_sql configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
 	return &core, nil
 }
 
-func (core *Core) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error) {
-	films, err := core.films.GetFilmsByGenre(genre, start, end)
+func (core *Core) GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error) {
+	films := []models.FilmItem{}
+	var err error
+
+	if genreId == 0 {
+		films, err = core.films.GetFilms(start, end)
+	} else {
+		films, err = core.films.GetFilmsByGenre(genreId, start, end)
+	}
 	if err != nil {
 		core.lg.Error("failed to get films from db", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmsByGenre err: %w", err)
+		return nil, "", fmt.Errorf("GetFilms err: %w", err)
 	}
 
-	return films, nil
+	genre, err := core.genres.GetGenreById(genreId)
+
+	return films, genre, nil
 }
 
-func (core *Core) GetFilms(start uint64, end uint64) ([]models.FilmItem, error) {
-	films, err := core.films.GetFilms(start, end)
-	if err != nil {
-		core.lg.Error("failed to get films from db", "err", err.Error())
-		return nil, fmt.Errorf("GetFilms err: %w", err)
-	}
-
-	return films, nil
-}
-
-func (core *Core) GetFilm(filmId uint64) (*models.FilmItem, error) {
+func (core *Core) GetFilmInfo(filmId uint64) (*requests.FilmResponse, error) {
 	film, err := core.films.GetFilm(filmId)
 	if err != nil {
-		core.lg.Error("Get Film error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilm err: %w", err)
+		core.lg.Error("get film error", "err", err.Error())
+		return nil, fmt.Errorf("get film err: %w", err)
+	}
+	if film.Title == "" {
+		return nil, errNotFound()
 	}
 
-	return film, nil
-}
-
-func (core *Core) GetFilmGenres(filmId uint64) ([]models.GenreItem, error) {
 	genres, err := core.genres.GetFilmGenres(filmId)
 	if err != nil {
-		core.lg.Error("Get Film Genres error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmGenres err: %w", err)
+		core.lg.Error("get film genres error", "err", err.Error())
+		return nil, fmt.Errorf("get film genres err: %w", err)
 	}
 
-	return genres, nil
-}
-
-func (core *Core) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	rating, number, err := core.films.GetFilmRating(filmId)
 	if err != nil {
-		core.lg.Error("Get Film Rating error", "err", err.Error())
-		return 0, 0, fmt.Errorf("GetFilmRating err: %w", err)
+		core.lg.Error("get film rating error", "err", err.Error())
+		return nil, fmt.Errorf("get film rating err: %w", err)
 	}
 
-	return rating, number, nil
-}
-
-func (core *Core) GetFilmDirectors(filmId uint64) ([]models.CrewItem, error) {
 	directors, err := core.crew.GetFilmDirectors(filmId)
 	if err != nil {
-		core.lg.Error("Get Film Directors error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmDirectors err: %w", err)
+		core.lg.Error("get film directors error", "err", err.Error())
+		return nil, fmt.Errorf("get film directors err: %w", err)
 	}
 
-	return directors, nil
-}
-
-func (core *Core) GetFilmScenarists(filmId uint64) ([]models.CrewItem, error) {
 	scenarists, err := core.crew.GetFilmScenarists(filmId)
 	if err != nil {
-		core.lg.Error("Get Film Scenarists error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmScenarists err: %w", err)
+		core.lg.Error("get film scenarists error", "err", err.Error())
+		return nil, fmt.Errorf("get film scenarists err: %w", err)
 	}
 
-	return scenarists, nil
-}
-
-func (core *Core) GetFilmCharacters(filmId uint64) ([]models.Character, error) {
 	characters, err := core.crew.GetFilmCharacters(filmId)
-	if err != nil {
-		core.lg.Error("Get Film Characters error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmCharacters err: %w", err)
+
+	result := requests.FilmResponse{
+		Film:       *film,
+		Genres:     genres,
+		Rating:     rating,
+		Number:     number,
+		Directors:  directors,
+		Scenarists: scenarists,
+		Characters: characters,
 	}
 
-	return characters, nil
+	return &result, nil
 }
 
-func (core *Core) GetActor(actorId uint64) (*models.CrewItem, error) {
+func (core *Core) GetActorInfo(actorId uint64) (*requests.ActorResponse, error) {
 	actor, err := core.crew.GetActor(actorId)
 	if err != nil {
-		core.lg.Error("Get Actor error", "err", err.Error())
-		return nil, fmt.Errorf("GetActor err: %w", err)
+		core.lg.Error("get actor error", "err", err.Error())
+		return nil, fmt.Errorf("get actor err: %w", err)
+	}
+	if actor.Name == "" {
+		return nil, errNotFound()
 	}
 
-	return actor, nil
+	career, err := core.profession.GetActorsProfessions(actorId)
+	if err != nil {
+		core.lg.Error("get actor profession error", "err", err.Error())
+		return nil, fmt.Errorf("get actor profession err: %w", err)
+	}
+
+	result := requests.ActorResponse{
+		Name:      actor.Name,
+		Photo:     actor.Photo,
+		BirthDate: actor.Birthdate,
+		Country:   actor.Country,
+		Info:      actor.Info,
+		Career:    career,
+	}
+	return &result, nil
 }
 
 func (core *Core) GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error) {
@@ -173,4 +174,8 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 	}
 
 	return genre, nil
+}
+
+func errNotFound() error {
+	return errors.New("not found")
 }

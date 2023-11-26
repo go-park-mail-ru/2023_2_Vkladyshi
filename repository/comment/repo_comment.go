@@ -16,7 +16,7 @@ import (
 type ICommentRepo interface {
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error)
 	AddComment(filmId uint64, userId string, rating uint16, text string) error
-	FindUsersComment(login string, filmId uint64) (bool, error)
+	HasUsersComment(login string, filmId uint64) (bool, error)
 }
 
 type RepoPostgre struct {
@@ -92,7 +92,7 @@ func (repo *RepoPostgre) AddComment(filmId uint64, userLogin string, rating uint
 	return nil
 }
 
-func (repo *RepoPostgre) FindUsersComment(login string, filmId uint64) (bool, error) {
+func (repo *RepoPostgre) HasUsersComment(login string, filmId uint64) (bool, error) {
 	var id uint64
 	err := repo.db.QueryRow(
 		"SELECT id_user FROM users_comment "+
