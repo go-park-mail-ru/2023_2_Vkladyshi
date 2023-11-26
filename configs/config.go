@@ -7,14 +7,18 @@ import (
 )
 
 type DbDsnCfg struct {
-	User         string `yaml:"user"`
-	DbName       string `yaml:"dbname"`
-	Password     string `yaml:"password"`
-	Host         string `yaml:"host"`
-	Port         int    `yaml:"port"`
-	Sslmode      string `yaml:"sslmode"`
-	MaxOpenConns int    `yaml:"max_open_conns"`
-	Timer        uint32 `yaml:"timer"`
+	User          string `yaml:"user"`
+	DbName        string `yaml:"dbname"`
+	Password      string `yaml:"password"`
+	Host          string `yaml:"host"`
+	Port          int    `yaml:"port"`
+	Sslmode       string `yaml:"sslmode"`
+	MaxOpenConns  int    `yaml:"max_open_conns"`
+	Timer         uint32 `yaml:"timer"`
+	Films_db      string `yaml:"postgres"`
+	Genres_db     string `yaml:"postgres"`
+	Crew_db       string `yaml:"postgres"`
+	Profession_db string `yaml:"postgres"`
 }
 
 type DbRedisCfg struct {

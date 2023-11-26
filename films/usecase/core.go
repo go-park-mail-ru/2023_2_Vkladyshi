@@ -33,22 +33,43 @@ type Core struct {
 }
 
 func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
-	films, err := film.GetFilmRepo(*cfg_sql, lg)
+	var films film.IFilmsRepo
+	var genres genre.IGenreRepo
+	var actors crew.ICrewRepo
+	var professions profession.IProfessionRepo
+	var err error
+
+	switch cfg_sql.Films_db {
+	case "postgres":
+		films, err = film.GetFilmRepo(*cfg_sql, lg)
+	}
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	genres, err := genre.GetGenreRepo(*cfg_sql, lg)
+
+	switch cfg_sql.Genres_db {
+	case "postgres":
+		genres, err = genre.GetGenreRepo(*cfg_sql, lg)
+	}
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	crew, err := crew.GetCrewRepo(*cfg_sql, lg)
+
+	switch cfg_sql.Crew_db {
+	case "postgres":
+		actors, err = crew.GetCrewRepo(*cfg_sql, lg)
+	}
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	professions, err := profession.GetProfessionRepo(*cfg_sql, lg)
+
+	switch cfg_sql.Profession_db {
+	case "postgres":
+		professions, err = profession.GetProfessionRepo(*cfg_sql, lg)
+	}
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
@@ -57,7 +78,7 @@ func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
 		lg:         lg.With("module", "core"),
 		films:      films,
 		genres:     genres,
-		crew:       crew,
+		crew:       actors,
 		profession: professions,
 	}
 	return &core, nil
