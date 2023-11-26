@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
@@ -18,6 +19,8 @@ type IFilmsRepo interface {
 	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
 	GetFilm(filmId uint64) (*models.FilmItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
+	FindFilm(title string, dateFrom string, dateTo string,
+		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error)
 }
 
 type RepoPostgre struct {
@@ -139,4 +142,65 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	}
 
 	return rating.Float64, uint64(number.Int64), nil
+}
+
+func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
+	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error) {
+
+	films := []models.FilmItem{}
+
+	var s strings.Builder
+	s.WriteString(
+		"SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film " +
+			"JOIN films_genre ON film.id = films_genre.id_film " +
+			"JOIN genre ON genre.id = films_genre.id_genre " +
+			"JOIN users_comment ON film.id = users_comment.id_film " +
+			"JOIN person_in_film ON film.id = person_in_film.id_film " +
+			"JOIN crew ON person_in_film.id_person = crew.id WHERE ")
+	if title != "" {
+		s.WriteString("fts @@ to_tsquery($1) AND ")
+	}
+	if dateFrom != "" {
+		s.WriteString("release_date >= '$2' AND ")
+	}
+	if dateTo != "" {
+		s.WriteString("release_date <= '$3' AND ")
+	}
+	if mpaa != "" {
+		s.WriteString("mpaa = $8 AND ")
+	}
+	s.WriteString(
+		"(CASE WHEN array_length($4::varchar[], 1)> 0 " +
+			"THEN genre.title = ANY ($4::varchar[]) ELSE TRUE END) AND (CASE " +
+			"WHEN array_length($5::varchar[], 1)> 0 " +
+			"THEN crew.name = ANY ($5::varchar[]) ELSE TRUE END) " +
+
+			"GROUP BY film.title, film.id, genre.title " +
+			"HAVING AVG(users_comment.rating) > $6 AND AVG(users_comment.rating) < $7 " +
+			"ORDER BY film.title")
+
+	rows, err := repo.db.Query(s.String(), title, dateFrom, dateTo, genres, actors, ratingFrom, ratingTo, mpaa)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("find film err: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		post := models.FilmItem{}
+		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		if err != nil {
+			return nil, fmt.Errorf("find film scan err: %w", err)
+		}
+		films = append(films, post)
+	}
+
+	return films, nil
+}
+
+func checkTitle(title string) string {
+	if title != "" {
+		return ""
+	}
+
+	return ""
 }

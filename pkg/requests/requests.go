@@ -33,5 +33,6 @@ type FindFilmRequest struct {
 	RatingFrom float32  `json:"rating_from"`
 	RatingTo   float32  `json:"rating_to"`
 	Mpaa       string   `json:"mpaa"`
+	Genres     []string `json:"genre"`
 	Actors     []string `json:"actors"`
 }

@@ -20,6 +20,8 @@ type ICore interface {
 	GetActorInfo(actorId uint64) (*requests.ActorResponse, error)
 	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
+	FindFilm(title string, dateFrom string, dateTo string,
+		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error)
 }
 
 type Core struct {
@@ -174,6 +176,18 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 	}
 
 	return genre, nil
+}
+
+func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
+	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error) {
+
+	films, err := core.films.FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	if err != nil {
+		core.lg.Error("find film error", "err", err.Error())
+		return nil, fmt.Errorf("find film err: %w", err)
+	}
+
+	return films, nil
 }
 
 func errNotFound() error {

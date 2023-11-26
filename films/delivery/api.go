@@ -3,6 +3,7 @@ package delivery
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -116,11 +117,6 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
 	if err != nil {
-		if errors.Is(err, errors.New("not found")) {
-			response.Status = http.StatusNotFound
-			a.SendResponse(w, response)
-			return
-		}
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
@@ -128,7 +124,12 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	film, err := a.core.GetFilmInfo(filmId)
 	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
+		if errors.Is(err, errors.New("not found")) {
+			response.Status = http.StatusNotFound
+			a.SendResponse(w, response)
+			return
+		}
+		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -154,11 +155,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 
 	actorId, err := strconv.ParseUint(r.URL.Query().Get("actor_id"), 10, 64)
 	if err != nil {
-		if errors.Is(err, errors.New("not found")) {
-			response.Status = http.StatusNotFound
-			a.SendResponse(w, response)
-			return
-		}
+		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		a.SendResponse(w, response)
 		return
@@ -166,7 +163,12 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 
 	actor, err := a.core.GetActorInfo(actorId)
 	if err != nil {
-		a.lg.Error("Actor error", "err", err.Error())
+		if errors.Is(err, errors.New("not found")) {
+			response.Status = http.StatusNotFound
+			a.SendResponse(w, response)
+			return
+		}
+		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
 		a.SendResponse(w, response)
 		return
@@ -188,17 +190,38 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 		a.SendResponse(w, response)
 		return
 	}
+	var request requests.FindFilmRequest
 
-	/*title := r.URL.Query().Get("title")
-	dateFrom := r.URL.Query().Get("actor_id")
-	dateTo := r.URL.Query().Get("actor_id")
-	ratingFrom := r.URL.Query().Get("actor_id")
-	ratingTo := r.URL.Query().Get("actor_id")
-	mpaa := r.URL.Query().Get("actor_id")
-	genres := r.URL.Query().Get("actor_id")
-	actors := r.URL.Query().Get("actor_id")
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		a.lg.Error("find film error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
 
-	a.core.SearchFilm(title, dateFrom, dateTo, ratingFrom, ratingTo)*/
+	if err = json.Unmarshal(body, &request); err != nil {
+		a.lg.Error("find film error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+
+	films, err := a.core.FindFilm(request.Title, request.DateFrom, request.DateTo, request.RatingFrom, request.RatingTo, request.Mpaa, request.Genres, request.Actors)
+	if err != nil {
+		if errors.Is(err, errors.New("not found")) {
+			response.Status = http.StatusNotFound
+			a.SendResponse(w, response)
+			return
+		}
+		a.lg.Error("find film error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		a.SendResponse(w, response)
+		return
+	}
+
+	response.Body = films
+	a.SendResponse(w, response)
 }
 
 func (a *API) FavoriteFilmsAdd(w http.ResponseWriter, r *http.Request) {
