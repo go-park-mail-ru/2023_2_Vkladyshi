@@ -64,7 +64,7 @@ func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
 }
 
 func (core *Core) GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error) {
-	films := []models.FilmItem{}
+	var films []models.FilmItem
 	var err error
 
 	if genreId == 0 {
@@ -78,6 +78,10 @@ func (core *Core) GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64
 	}
 
 	genre, err := core.genres.GetGenreById(genreId)
+	if err != nil {
+		core.lg.Error("failed to get genre by id", "err", err.Error())
+		return nil, "", fmt.Errorf("GetFilms err: %w", err)
+	}
 
 	return films, genre, nil
 }
@@ -117,6 +121,10 @@ func (core *Core) GetFilmInfo(filmId uint64) (*requests.FilmResponse, error) {
 	}
 
 	characters, err := core.crew.GetFilmCharacters(filmId)
+	if err != nil {
+		core.lg.Error("get film characters error", "err", err.Error())
+		return nil, fmt.Errorf("get film scenarists err: %w", err)
+	}
 
 	result := requests.FilmResponse{
 		Film:       *film,

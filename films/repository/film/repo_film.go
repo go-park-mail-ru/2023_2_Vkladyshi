@@ -196,11 +196,3 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 
 	return films, nil
 }
-
-func checkTitle(title string) string {
-	if title != "" {
-		return ""
-	}
-
-	return ""
-}
