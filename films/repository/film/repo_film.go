@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
+	"github.com/lib/pq"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
@@ -151,7 +152,6 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
-
 	var s strings.Builder
 	s.WriteString(
 		"SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film " +
@@ -161,28 +161,28 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
 			"JOIN crew ON person_in_film.id_person = crew.id WHERE ")
 	if title != "" {
-		s.WriteString("fts @@ to_tsquery($1) AND ")
+		s.WriteString("fts @@ to_tsquery($5) AND ")
 	}
 	if dateFrom != "" {
-		s.WriteString("release_date >= '$2' AND ")
+		s.WriteString("release_date >= '$6' AND ")
 	}
 	if dateTo != "" {
-		s.WriteString("release_date <= '$3' AND ")
+		s.WriteString("release_date <= '$7' AND ")
 	}
 	if mpaa != "" {
 		s.WriteString("mpaa = $8 AND ")
 	}
 	s.WriteString(
-		"(CASE WHEN array_length($4::varchar[], 1)> 0 " +
-			"THEN genre.title = ANY ($4::varchar[]) ELSE TRUE END) AND (CASE " +
-			"WHEN array_length($5::varchar[], 1)> 0 " +
-			"THEN crew.name = ANY ($5::varchar[]) ELSE TRUE END) " +
+		"(CASE WHEN array_length($1::varchar[], 1)> 0 " +
+			"THEN genre.title = ANY ($1::varchar[]) ELSE TRUE END) AND (CASE " +
+			"WHEN array_length($2::varchar[], 1)> 0 " +
+			"THEN crew.name = ANY ($2::varchar[]) ELSE TRUE END) " +
 
 			"GROUP BY film.title, film.id, genre.title " +
-			"HAVING AVG(users_comment.rating) > $6 AND AVG(users_comment.rating) < $7 " +
+			"HAVING AVG(users_comment.rating) > $3 AND AVG(users_comment.rating) < $4 " +
 			"ORDER BY film.title")
 
-	rows, err := repo.db.Query(s.String(), title, dateFrom, dateTo, genres, actors, ratingFrom, ratingTo, mpaa)
+	rows, err := repo.db.Query(s.String(), pq.Array(genres), pq.Array(actors), ratingFrom, ratingTo, title, dateFrom, dateTo, mpaa)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("find film err: %w", err)
 	}
@@ -190,7 +190,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 
 	for rows.Next() {
 		post := models.FilmItem{}
-		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		err := rows.Scan(&post.Title, &post.Id, &post.Poster, &post.Rating)
 		if err != nil {
 			return nil, fmt.Errorf("find film scan err: %w", err)
 		}
