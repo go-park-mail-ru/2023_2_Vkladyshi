@@ -22,6 +22,9 @@ type ICore interface {
 	GetGenre(genreId uint64) (string, error)
 	FindFilm(title string, dateFrom string, dateTo string,
 		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error)
+	FavoriteFilms(userId uint64) ([]models.FilmItem, error)
+	FavoriteFilmsAdd(userId uint64, filmId uint64) error
+	FavoriteFilmsRemove(userId uint64, filmId uint64) error
 }
 
 type Core struct {
@@ -221,4 +224,34 @@ func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
 
 func errNotFound() error {
 	return errors.New("not found")
+}
+
+func (core *Core) FavoriteFilms(userId uint64) ([]models.FilmItem, error) {
+	films, err := core.films.GetFavoriteFilms(userId)
+	if err != nil {
+		core.lg.Error("favorite films error", "err", err.Error())
+		return nil, fmt.Errorf("favorite films err: %w", err)
+	}
+
+	return films, nil
+}
+
+func (core *Core) FavoriteFilmsAdd(userId uint64, filmId uint64) error {
+	err := core.films.AddFavoriteFilm(userId, filmId)
+	if err != nil {
+		core.lg.Error("favorite film add error", "err", err.Error())
+		return fmt.Errorf("favorite film add err: %w", err)
+	}
+
+	return nil
+}
+
+func (core *Core) FavoriteFilmsRemove(userId uint64, filmId uint64) error {
+	err := core.films.RemoveFavoriteFilm(userId, filmId)
+	if err != nil {
+		core.lg.Error("favorite film remove error", "err", err.Error())
+		return fmt.Errorf("favorite film remove err: %w", err)
+	}
+
+	return nil
 }

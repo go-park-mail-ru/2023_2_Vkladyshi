@@ -21,6 +21,9 @@ type IFilmsRepo interface {
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 	FindFilm(title string, dateFrom string, dateTo string,
 		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error)
+	GetFavoriteFilms(userId uint64) ([]models.FilmItem, error)
+	AddFavoriteFilm(userId uint64, filmId uint64) error
+	RemoveFavoriteFilm(userId uint64, filmId uint64) error
 }
 
 type RepoPostgre struct {
@@ -195,4 +198,49 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	}
 
 	return films, nil
+}
+
+func (repo *RepoPostgre) GetFavoriteFilms(userId uint64) ([]models.FilmItem, error) {
+	films := []models.FilmItem{}
+
+	rows, err := repo.db.Query(
+		"SELECT film.title, film.id, film.poster FROM film "+
+			"JOIN users_favorite_film ON film.id = users_favorite_film.id_film "+
+			"WHERE id_user = $1", userId)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("get favorite films err: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		post := models.FilmItem{}
+		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		if err != nil {
+			return nil, fmt.Errorf("get favorite films scan err: %w", err)
+		}
+		films = append(films, post)
+	}
+
+	return films, nil
+}
+
+func (repo *RepoPostgre) AddFavoriteFilm(userId uint64, filmId uint64) error {
+	_, err := repo.db.Exec(
+		"INSERT INTO users_favorite_film(id_user, id_film) VALUES ($1, $2)", userId, filmId)
+	if err != nil {
+		return fmt.Errorf("add favorite film err: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *RepoPostgre) RemoveFavoriteFilm(userId uint64, filmId uint64) error {
+	_, err := repo.db.Exec(
+		"DELETE FROM users_favorite_film "+
+			"WHERE id_user = $1 AND id_film = $2", userId, filmId)
+	if err != nil {
+		return fmt.Errorf("remove favorite film err: %w", err)
+	}
+
+	return nil
 }
