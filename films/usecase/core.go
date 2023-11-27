@@ -14,6 +14,8 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
+var ErrNotFound = errors.New("not found")
+
 type ICore interface {
 	GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error)
 	GetFilmInfo(filmId uint64) (*requests.FilmResponse, error)
@@ -21,7 +23,8 @@ type ICore interface {
 	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
 	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error)
+		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+	) ([]models.FilmItem, error)
 	FavoriteFilms(userId uint64) ([]models.FilmItem, error)
 	FavoriteFilmsAdd(userId uint64, filmId uint64) error
 	FavoriteFilmsRemove(userId uint64, filmId uint64) error
@@ -35,48 +38,7 @@ type Core struct {
 	profession profession.IProfessionRepo
 }
 
-func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
-	var films film.IFilmsRepo
-	var genres genre.IGenreRepo
-	var actors crew.ICrewRepo
-	var professions profession.IProfessionRepo
-	var err error
-
-	switch cfg_sql.Films_db {
-	case "postgres":
-		films, err = film.GetFilmRepo(*cfg_sql, lg)
-	}
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
-
-	switch cfg_sql.Genres_db {
-	case "postgres":
-		genres, err = genre.GetGenreRepo(*cfg_sql, lg)
-	}
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
-
-	switch cfg_sql.Crew_db {
-	case "postgres":
-		actors, err = crew.GetCrewRepo(*cfg_sql, lg)
-	}
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
-
-	switch cfg_sql.Profession_db {
-	case "postgres":
-		professions, err = profession.GetProfessionRepo(*cfg_sql, lg)
-	}
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
+func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger, films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo) *Core {
 	core := Core{
 		lg:         lg.With("module", "core"),
 		films:      films,
@@ -84,7 +46,7 @@ func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger) (*Core, error) {
 		crew:       actors,
 		profession: professions,
 	}
-	return &core, nil
+	return &core
 }
 
 func (core *Core) GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error) {
@@ -117,7 +79,7 @@ func (core *Core) GetFilmInfo(filmId uint64) (*requests.FilmResponse, error) {
 		return nil, fmt.Errorf("get film err: %w", err)
 	}
 	if film.Title == "" {
-		return nil, errNotFound()
+		return nil, ErrNotFound
 	}
 
 	genres, err := core.genres.GetFilmGenres(filmId)
@@ -170,7 +132,7 @@ func (core *Core) GetActorInfo(actorId uint64) (*requests.ActorResponse, error) 
 		return nil, fmt.Errorf("get actor err: %w", err)
 	}
 	if actor.Name == "" {
-		return nil, errNotFound()
+		return nil, ErrNotFound
 	}
 
 	career, err := core.profession.GetActorsProfessions(actorId)
@@ -211,7 +173,8 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 }
 
 func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error) {
+	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+) ([]models.FilmItem, error) {
 
 	films, err := core.films.FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
 	if err != nil {
@@ -220,10 +183,6 @@ func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
 	}
 
 	return films, nil
-}
-
-func errNotFound() error {
-	return errors.New("not found")
 }
 
 func (core *Core) FavoriteFilms(userId uint64) ([]models.FilmItem, error) {

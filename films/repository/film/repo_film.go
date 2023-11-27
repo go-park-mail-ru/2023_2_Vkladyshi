@@ -21,7 +21,8 @@ type IFilmsRepo interface {
 	GetFilm(filmId uint64) (*models.FilmItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error)
+		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+	) ([]models.FilmItem, error)
 	GetFavoriteFilms(userId uint64) ([]models.FilmItem, error)
 	AddFavoriteFilm(userId uint64, filmId uint64) error
 	RemoveFavoriteFilm(userId uint64, filmId uint64) error
@@ -149,7 +150,8 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 }
 
 func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string) ([]models.FilmItem, error) {
+	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
 	var s strings.Builder
@@ -182,7 +184,9 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 			"HAVING AVG(users_comment.rating) > $3 AND AVG(users_comment.rating) < $4 " +
 			"ORDER BY film.title")
 
-	rows, err := repo.db.Query(s.String(), pq.Array(genres), pq.Array(actors), ratingFrom, ratingTo, title, dateFrom, dateTo, mpaa)
+	rows, err := repo.db.Query(s.String(),
+		pq.Array(genres), pq.Array(actors), ratingFrom, ratingTo, title, dateFrom, dateTo, mpaa)
+
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("find film err: %w", err)
 	}

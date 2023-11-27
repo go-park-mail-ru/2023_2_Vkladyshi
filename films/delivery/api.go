@@ -124,7 +124,7 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	film, err := a.core.GetFilmInfo(filmId)
 	if err != nil {
-		if errors.Is(err, errors.New("not found")) {
+		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
 			a.SendResponse(w, response)
 			return
@@ -209,7 +209,7 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 
 	films, err := a.core.FindFilm(request.Title, request.DateFrom, request.DateTo, request.RatingFrom, request.RatingTo, request.Mpaa, request.Genres, request.Actors)
 	if err != nil {
-		if errors.Is(err, errors.New("not found")) {
+		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
 			a.SendResponse(w, response)
 			return
