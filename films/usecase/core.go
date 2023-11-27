@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/calendar"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/genre"
@@ -28,6 +30,7 @@ type ICore interface {
 	FavoriteFilms(userId uint64) ([]models.FilmItem, error)
 	FavoriteFilmsAdd(userId uint64, filmId uint64) error
 	FavoriteFilmsRemove(userId uint64, filmId uint64) error
+	GetCalendar() (*requests.CalendarResponse, error)
 }
 
 type Core struct {
@@ -36,6 +39,7 @@ type Core struct {
 	genres     genre.IGenreRepo
 	crew       crew.ICrewRepo
 	profession profession.IProfessionRepo
+	calendar   calendar.ICalendarRepo
 }
 
 func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger, films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo) *Core {
@@ -213,4 +217,21 @@ func (core *Core) FavoriteFilmsRemove(userId uint64, filmId uint64) error {
 	}
 
 	return nil
+}
+
+func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
+	var result *requests.CalendarResponse
+
+	calendar, err := core.calendar.GetCalendar()
+	if err != nil {
+		core.lg.Error("get calendar error", "err", err.Error())
+		return nil, fmt.Errorf("get calendar err: %w", err)
+	}
+
+	result.Days = calendar
+	result.CurrentDay = uint8(time.Now().Day())
+	result.MonthName = time.Now().Month().String()
+	result.MonthText = "Новинки этого месяца"
+
+	return result, nil
 }

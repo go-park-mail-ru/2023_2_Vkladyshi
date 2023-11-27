@@ -56,6 +56,13 @@ type AuthCheckResponse struct {
 	Login string `json:"login"`
 }
 
+type CalendarResponse struct {
+	MonthName  string           `json:"monthName"`
+	MonthText  string           `json:"monthText"`
+	CurrentDay uint8            `json:"currentDay"`
+	Days       []models.DayItem `json:"days"`
+}
+
 func SendResponse(w http.ResponseWriter, response Response, lg *slog.Logger) {
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {

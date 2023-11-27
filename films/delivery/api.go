@@ -34,6 +34,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/api/v1/favorite/actors", api.FavoriteActors)
 	mx.HandleFunc("/api/v1/favorite/actor/add", api.FavoriteActorsAdd)
 	mx.HandleFunc("/api/v1/favorite/actor/remove", api.FavoriteActorsRemove)
+	mx.HandleFunc("/api/v1/calendar", api.Calendar)
 
 	api.mx = mx
 
@@ -261,4 +262,24 @@ func (a *API) FavoriteActors(w http.ResponseWriter, r *http.Request) {
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
+}
+
+func (a *API) Calendar(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	calendar, err := a.core.GetCalendar()
+	if err != nil {
+		a.lg.Error("calendar error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	response.Body = calendar
+	requests.SendResponse(w, response, a.lg)
 }
