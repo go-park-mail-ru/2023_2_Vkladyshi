@@ -30,10 +30,10 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/signin", api.Signin)
 	mx.HandleFunc("/logout", api.LogoutSession)
 	mx.HandleFunc("/authcheck", api.AuthAccept)
-	mx.HandleFunc("/api/v1/comment", api.Comment)
-	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 	mx.HandleFunc("/api/v1/settings", api.Profile)
 	mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
+	mx.HandleFunc("/api/v1/comment", api.Comment)
+	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 
 	api.mx = mx
 
