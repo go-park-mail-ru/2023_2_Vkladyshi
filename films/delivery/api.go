@@ -47,27 +47,12 @@ func (a *API) ListenAndServe() {
 	}
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response requests.Response) {
-	jsonResponse, err := json.Marshal(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		a.lg.Error("failed to pack json", "err", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(jsonResponse)
-	if err != nil {
-		a.lg.Error("failed to send response", "err", err.Error())
-	}
-}
-
 func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -91,7 +76,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("get films error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -104,21 +89,21 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	}
 	response.Body = filmsResponse
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -126,30 +111,30 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
-			a.SendResponse(w, response)
+			requests.SendResponse(w, response, a.lg)
 			return
 		}
 		a.lg.Error("film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if film.Film.Title == "" {
 		response.Status = http.StatusNotFound
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	response.Body = film
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -157,7 +142,7 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -165,29 +150,29 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, errors.New("not found")) {
 			response.Status = http.StatusNotFound
-			a.SendResponse(w, response)
+			requests.SendResponse(w, response, a.lg)
 			return
 		}
 		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if actor == nil {
 		response.Status = http.StatusNotFound
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	response.Body = actor
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	var request requests.FindFilmRequest
@@ -196,14 +181,14 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("find film error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	if err = json.Unmarshal(body, &request); err != nil {
 		a.lg.Error("find film error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -211,24 +196,24 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
-			a.SendResponse(w, response)
+			requests.SendResponse(w, response, a.lg)
 			return
 		}
 		a.lg.Error("find film error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	response.Body = films
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) FavoriteFilmsAdd(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 }
@@ -237,7 +222,7 @@ func (a *API) FavoriteFilmsRemove(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 }
@@ -246,7 +231,7 @@ func (a *API) FavoriteFilms(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 }
@@ -255,7 +240,7 @@ func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 }
@@ -264,7 +249,7 @@ func (a *API) FavoriteActorsRemove(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 }
@@ -273,7 +258,7 @@ func (a *API) FavoriteActors(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 }

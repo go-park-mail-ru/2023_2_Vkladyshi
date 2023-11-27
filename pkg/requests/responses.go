@@ -1,6 +1,10 @@
 package requests
 
 import (
+	"encoding/json"
+	"log/slog"
+	"net/http"
+
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
@@ -50,4 +54,19 @@ type ProfileResponse struct {
 
 type AuthCheckResponse struct {
 	Login string `json:"login"`
+}
+
+func SendResponse(w http.ResponseWriter, response Response, lg *slog.Logger) {
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		lg.Error("failed to pack json", "err", err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_, err = w.Write(jsonResponse)
+	if err != nil {
+		lg.Error("failed to send response", "err", err.Error())
+	}
 }
