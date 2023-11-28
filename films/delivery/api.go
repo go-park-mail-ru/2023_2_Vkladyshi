@@ -120,11 +120,6 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
-	if film.Film.Title == "" {
-		response.Status = http.StatusNotFound
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
 
 	response.Body = film
 
@@ -149,18 +144,13 @@ func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
 
 	actor, err := a.core.GetActorInfo(actorId)
 	if err != nil {
-		if errors.Is(err, errors.New("not found")) {
+		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
 			requests.SendResponse(w, response, a.lg)
 			return
 		}
 		a.lg.Error("actor error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	if actor == nil {
-		response.Status = http.StatusNotFound
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
