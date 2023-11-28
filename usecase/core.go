@@ -11,12 +11,9 @@ import (
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/crew"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/csrf"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/genre"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
 )
@@ -26,12 +23,8 @@ type Core struct {
 	csrfTokens csrf.CsrfRepo
 	mutex      sync.RWMutex
 	lg         *slog.Logger
-	films      film.IFilmsRepo
 	users      profile.IUserRepo
-	genres     genre.IGenreRepo
 	comments   comment.ICommentRepo
-	crew       crew.ICrewRepo
-	profession profession.IProfessionRepo
 }
 
 type Session struct {
@@ -53,17 +46,7 @@ func GetCore(cfg_sql configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions
 		return nil, err
 	}
 
-	films, err := film.GetFilmRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
 	users, err := profile.GetUserRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
-	genres, err := genre.GetGenreRepo(cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
@@ -73,26 +56,12 @@ func GetCore(cfg_sql configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	crew, err := crew.GetCrewRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
-	professions, err := profession.GetProfessionRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
 	core := Core{
 		sessions:   *session,
 		csrfTokens: *csrf,
 		lg:         lg.With("module", "core"),
-		films:      films,
 		users:      users,
-		genres:     genres,
 		comments:   comments,
-		crew:       crew,
-		profession: professions,
 	}
 	return &core, nil
 }
@@ -117,7 +86,7 @@ func (core *Core) CreateCsrfToken(ctx context.Context) (string, error) {
 	core.mutex.Lock()
 	csrfAdded, err := core.csrfTokens.AddCsrf(
 		ctx,
-		csrf.Csrf{
+		models.Csrf{
 			SID:       sid,
 			ExpiresAt: time.Now().Add(3 * time.Hour),
 		},
@@ -148,10 +117,10 @@ func (core *Core) GetUserName(ctx context.Context, sid string) (string, error) {
 	return login, nil
 }
 
-func (core *Core) CreateSession(ctx context.Context, login string) (string, session.Session, error) {
+func (core *Core) CreateSession(ctx context.Context, login string) (string, models.Session, error) {
 	sid := RandStringRunes(32)
 
-	newSession := session.Session{
+	newSession := models.Session{
 		Login:     login,
 		SID:       sid,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
@@ -162,11 +131,11 @@ func (core *Core) CreateSession(ctx context.Context, login string) (string, sess
 	core.mutex.Unlock()
 
 	if !sessionAdded && err != nil {
-		return "", session.Session{}, err
+		return "", models.Session{}, err
 	}
 
 	if !sessionAdded {
-		return "", session.Session{}, nil
+		return "", models.Session{}, nil
 	}
 
 	return sid, newSession, nil
@@ -209,7 +178,7 @@ func (core *Core) CreateUserAccount(login string, password string, name string, 
 	return nil
 }
 
-func (core *Core) FindUserAccount(login string, password string) (*profile.UserItem, bool, error) {
+func (core *Core) FindUserAccount(login string, password string) (*models.UserItem, bool, error) {
 	user, found, err := core.users.GetUser(login, password)
 	if err != nil {
 		core.lg.Error("find user error", "err", err.Error())
@@ -236,87 +205,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]film.FilmItem, error) {
-	films, err := core.films.GetFilmsByGenre(genre, start, end)
-	if err != nil {
-		core.lg.Error("failed to get films from db", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmsByGenre err: %w", err)
-	}
-
-	return films, nil
-}
-
-func (core *Core) GetFilms(start uint64, end uint64) ([]film.FilmItem, error) {
-	films, err := core.films.GetFilms(start, end)
-	if err != nil {
-		core.lg.Error("failed to get films from db", "err", err.Error())
-		return nil, fmt.Errorf("GetFilms err: %w", err)
-	}
-
-	return films, nil
-}
-
-func (core *Core) GetFilm(filmId uint64) (*film.FilmItem, error) {
-	film, err := core.films.GetFilm(filmId)
-	if err != nil {
-		core.lg.Error("Get Film error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilm err: %w", err)
-	}
-
-	return film, nil
-}
-
-func (core *Core) GetFilmGenres(filmId uint64) ([]genre.GenreItem, error) {
-	genres, err := core.genres.GetFilmGenres(filmId)
-	if err != nil {
-		core.lg.Error("Get Film Genres error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmGenres err: %w", err)
-	}
-
-	return genres, nil
-}
-
-func (core *Core) GetFilmRating(filmId uint64) (float64, uint64, error) {
-	rating, number, err := core.comments.GetFilmRating(filmId)
-	if err != nil {
-		core.lg.Error("Get Film Rating error", "err", err.Error())
-		return 0, 0, fmt.Errorf("GetFilmRating err: %w", err)
-	}
-
-	return rating, number, nil
-}
-
-func (core *Core) GetFilmDirectors(filmId uint64) ([]crew.CrewItem, error) {
-	directors, err := core.crew.GetFilmDirectors(filmId)
-	if err != nil {
-		core.lg.Error("Get Film Directors error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmDirectors err: %w", err)
-	}
-
-	return directors, nil
-}
-
-func (core *Core) GetFilmScenarists(filmId uint64) ([]crew.CrewItem, error) {
-	scenarists, err := core.crew.GetFilmScenarists(filmId)
-	if err != nil {
-		core.lg.Error("Get Film Scenarists error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmScenarists err: %w", err)
-	}
-
-	return scenarists, nil
-}
-
-func (core *Core) GetFilmCharacters(filmId uint64) ([]crew.Character, error) {
-	characters, err := core.crew.GetFilmCharacters(filmId)
-	if err != nil {
-		core.lg.Error("Get Film Characters error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmCharacters err: %w", err)
-	}
-
-	return characters, nil
-}
-
-func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]comment.CommentItem, error) {
+func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error) {
 	comments, err := core.comments.GetFilmComments(filmId, first, limit)
 	if err != nil {
 		core.lg.Error("Get Film Comments error", "err", err.Error())
@@ -324,26 +213,6 @@ func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]
 	}
 
 	return comments, nil
-}
-
-func (core *Core) GetActor(actorId uint64) (*crew.CrewItem, error) {
-	actor, err := core.crew.GetActor(actorId)
-	if err != nil {
-		core.lg.Error("Get Actor error", "err", err.Error())
-		return nil, fmt.Errorf("GetActor err: %w", err)
-	}
-
-	return actor, nil
-}
-
-func (core *Core) GetActorsCareer(actorId uint64) ([]profession.ProfessionItem, error) {
-	career, err := core.profession.GetActorsProfessions(actorId)
-	if err != nil {
-		core.lg.Error("Get Actors Career error", "err", err.Error())
-		return nil, fmt.Errorf("GetActorsCareer err: %w", err)
-	}
-
-	return career, nil
 }
 
 func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, text string) error {
@@ -356,7 +225,7 @@ func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, tex
 	return nil
 }
 
-func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
+func (core *Core) GetUserProfile(login string) (*models.UserItem, error) {
 	profile, err := core.users.GetUserProfile(login)
 	if err != nil {
 		core.lg.Error("GetUserProfile error", "err", err.Error())
@@ -364,16 +233,6 @@ func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
 	}
 
 	return profile, nil
-}
-
-func (core *Core) GetGenre(genreId uint64) (string, error) {
-	genre, err := core.genres.GetGenreById(genreId)
-	if err != nil {
-		core.lg.Error("GetGenre error", "err", err.Error())
-		return "", fmt.Errorf("GetGenre err: %w", err)
-	}
-
-	return genre, nil
 }
 
 func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
@@ -384,4 +243,14 @@ func (core *Core) EditProfile(prevLogin string, login string, password string, e
 	}
 
 	return nil
+}
+
+func (core *Core) HasUsersComment(login string, filmId uint64) (bool, error) {
+	found, err := core.comments.HasUsersComment(login, filmId)
+	if err != nil {
+		core.lg.Error("find users comment error", "err", err.Error())
+		return false, fmt.Errorf("find users comment error: %w", err)
+	}
+
+	return found, nil
 }
