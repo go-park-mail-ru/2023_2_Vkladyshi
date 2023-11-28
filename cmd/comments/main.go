@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log/slog"
 	"os"
 
@@ -11,7 +12,9 @@ import (
 )
 
 func main() {
-	logFile, _ := os.Create("comment_log.log")
+	var path string
+	flag.StringVar(&path, "comments_log_path", "comment_log.log", "Путь к логу комментов")
+	logFile, _ := os.Create(path)
 	lg := slog.New(slog.NewJSONHandler(logFile, nil))
 
 	config, err := configs.ReadCommentConfig()
@@ -33,5 +36,5 @@ func main() {
 	core := usecase.GetCore(config, lg, comments)
 	api := delivery.GetApi(core, lg)
 
-	api.ListenAndServe()
+	api.ListenAndServe(config)
 }

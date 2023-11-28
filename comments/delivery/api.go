@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
@@ -31,8 +32,8 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	return api
 }
 
-func (a *API) ListenAndServe() {
-	err := http.ListenAndServe(":8083", a.mx)
+func (a *API) ListenAndServe(cfg *configs.CommentCfg) {
+	err := http.ListenAndServe(cfg.ServerAdress, a.mx)
 	if err != nil {
 		a.lg.Error("listen and serve error", "err", err.Error())
 	}

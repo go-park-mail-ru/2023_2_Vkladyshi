@@ -20,6 +20,7 @@ type DbDsnCfg struct {
 	Genres_db     string `yaml:"genres_db"`
 	Crew_db       string `yaml:"crew_db"`
 	Profession_db string `yaml:"profession_db"`
+	ServerAdress  string `yaml:"server_adress"`
 }
 
 type CommentCfg struct {
@@ -32,6 +33,7 @@ type CommentCfg struct {
 	MaxOpenConns int    `yaml:"max_open_conns"`
 	Timer        uint32 `yaml:"timer"`
 	Comments_db  string `yaml:"comment_db"`
+	ServerAdress string `yaml:"server_adress"`
 }
 
 type DbRedisCfg struct {

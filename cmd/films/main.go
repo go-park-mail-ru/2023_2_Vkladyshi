@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log/slog"
 	"os"
 
@@ -14,7 +15,9 @@ import (
 )
 
 func main() {
-	logFile, _ := os.Create("film_log.log")
+	var path string
+	flag.StringVar(&path, "films_log_path", "films_log.log", "Путь к логу фильмов")
+	logFile, _ := os.Create(path)
 	lg := slog.New(slog.NewJSONHandler(logFile, nil))
 
 	config, err := configs.ReadFilmConfig()
@@ -68,5 +71,5 @@ func main() {
 	core := usecase.GetCore(config, lg, films, genres, actors, professions)
 	api := delivery.GetApi(core, lg)
 
-	api.ListenAndServe()
+	api.ListenAndServe(config)
 }
