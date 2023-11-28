@@ -205,26 +205,6 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error) {
-	comments, err := core.comments.GetFilmComments(filmId, first, limit)
-	if err != nil {
-		core.lg.Error("Get Film Comments error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmComments err: %w", err)
-	}
-
-	return comments, nil
-}
-
-func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, text string) error {
-	err := core.comments.AddComment(filmId, userLogin, rating, text)
-	if err != nil {
-		core.lg.Error("Add Comment error", "err", err.Error())
-		return fmt.Errorf("GetActorsCareer err: %w", err)
-	}
-
-	return nil
-}
-
 func (core *Core) GetUserProfile(login string) (*models.UserItem, error) {
 	profile, err := core.users.GetUserProfile(login)
 	if err != nil {
@@ -243,14 +223,4 @@ func (core *Core) EditProfile(prevLogin string, login string, password string, e
 	}
 
 	return nil
-}
-
-func (core *Core) HasUsersComment(login string, filmId uint64) (bool, error) {
-	found, err := core.comments.HasUsersComment(login, filmId)
-	if err != nil {
-		core.lg.Error("find users comment error", "err", err.Error())
-		return false, fmt.Errorf("find users comment error: %w", err)
-	}
-
-	return found, nil
 }

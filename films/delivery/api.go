@@ -42,9 +42,9 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 }
 
 func (a *API) ListenAndServe() {
-	err := http.ListenAndServe(":8081", a.mx)
+	err := http.ListenAndServe(":8082", a.mx)
 	if err != nil {
-		a.lg.Error("ListenAndServe error", "err", err.Error())
+		a.lg.Error("listen and serve error", "err", err.Error())
 	}
 }
 

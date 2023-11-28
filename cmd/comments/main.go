@@ -1,0 +1,37 @@
+package main
+
+import (
+	"log/slog"
+	"os"
+
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/delivery"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/repository/comment"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+)
+
+func main() {
+	logFile, _ := os.Create("comment_log.log")
+	lg := slog.New(slog.NewJSONHandler(logFile, nil))
+
+	config, err := configs.ReadCommentConfig()
+	if err != nil {
+		lg.Error("read config error", "err", err.Error())
+		return
+	}
+
+	var comments comment.ICommentRepo
+	switch config.Comments_db {
+	case "postgres":
+		comments, err = comment.GetCommentRepo(config, lg)
+	}
+	if err != nil {
+		lg.Error("cant create repo")
+		return
+	}
+
+	core := usecase.GetCore(config, lg, comments)
+	api := delivery.GetApi(core, lg)
+
+	api.ListenAndServe()
+}

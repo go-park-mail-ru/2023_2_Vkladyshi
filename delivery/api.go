@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
@@ -32,8 +31,6 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/authcheck", api.AuthAccept)
 	mx.HandleFunc("/api/v1/settings", api.Profile)
 	mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
-	mx.HandleFunc("/api/v1/comment", api.Comment)
-	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 
 	api.mx = mx
 
@@ -226,109 +223,6 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("failed to create user account", "err", err.Error())
 		response.Status = http.StatusBadRequest
-	}
-
-	requests.SendResponse(w, response, a.lg)
-}
-
-func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
-	response := requests.Response{Status: http.StatusOK, Body: nil}
-	if r.Method != http.MethodGet {
-		response.Status = http.StatusMethodNotAllowed
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
-	if err != nil {
-		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
-	if err != nil {
-		page = 1
-	}
-	pageSize, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
-	if err != nil {
-		pageSize = 10
-	}
-
-	comments, err := a.core.GetFilmComments(filmId, (page-1)*pageSize, pageSize)
-	if err != nil {
-		a.lg.Error("Comment", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	commentsResponse := requests.CommentResponse{Comments: comments}
-
-	response.Body = commentsResponse
-	requests.SendResponse(w, response, a.lg)
-}
-
-func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
-	response := requests.Response{Status: http.StatusOK, Body: nil}
-	if r.Method != http.MethodPost {
-		response.Status = http.StatusMethodNotAllowed
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	session, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
-		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	login, err := a.core.GetUserName(r.Context(), session.Value)
-	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	var commentRequest requests.CommentRequest
-
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	if err = json.Unmarshal(body, &commentRequest); err != nil {
-		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	found, err := a.core.HasUsersComment(login, commentRequest.FilmId)
-	if err != nil {
-		a.lg.Error("find comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	if found {
-		response.Status = http.StatusNotAcceptable
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	err = a.core.AddComment(commentRequest.FilmId, login, commentRequest.Rating, commentRequest.Text)
-	if err != nil {
-		a.lg.Error("Add Comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
 	}
 
 	requests.SendResponse(w, response, a.lg)

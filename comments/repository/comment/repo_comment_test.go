@@ -78,22 +78,24 @@ func TestAddComment(t *testing.T) {
 	defer db.Close()
 
 	testComment := models.CommentItem{
-		Username: "l1",
-		IdFilm:   1,
-		Rating:   1,
-		Comment:  "c1",
+		IdFilm:  1,
+		Rating:  1,
+		Comment: "c1",
 	}
+	idUser := uint64(1)
+
+	sqlQuery := "INSERT INTO users_comment(id_film, rating, comment, id_user) VALUES($1, $2, $3, $4)"
 
 	mock.ExpectExec(
-		regexp.QuoteMeta("INSERT INTO users_comment(id_film, rating, comment, id_user) SELECT $1, $2, $3, profile.id FROM profile WHERE login = $4")).
-		WithArgs(testComment.IdFilm, testComment.Rating, testComment.Comment, testComment.Username).
+		regexp.QuoteMeta(sqlQuery)).
+		WithArgs(testComment.IdFilm, testComment.Rating, testComment.Comment, idUser).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	repo := &RepoPostgre{
 		db: db,
 	}
 
-	err = repo.AddComment(testComment.IdFilm, testComment.Username, testComment.Rating, testComment.Comment)
+	err = repo.AddComment(testComment.IdFilm, idUser, testComment.Rating, testComment.Comment)
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 		return
@@ -104,17 +106,75 @@ func TestAddComment(t *testing.T) {
 	}
 
 	mock.ExpectExec(
-		regexp.QuoteMeta("INSERT INTO users_comment(id_film, rating, comment, id_user) SELECT $1, $2, $3, profile.id FROM profile WHERE login = $4")).
-		WithArgs(testComment.IdFilm, testComment.Rating, testComment.Comment, testComment.Username).
+		regexp.QuoteMeta(sqlQuery)).
+		WithArgs(testComment.IdFilm, testComment.Rating, testComment.Comment, idUser).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	err = repo.AddComment(testComment.IdFilm, testComment.Username, testComment.Rating, testComment.Comment)
+	err = repo.AddComment(testComment.IdFilm, idUser, testComment.Rating, testComment.Comment)
 	if err := mock.ExpectationsWereMet(); err != nil {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return
 	}
 	if err == nil {
 		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestHasUsersComment(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	idFilm := uint64(1)
+	idUser := uint64(1)
+
+	rows := sqlmock.NewRows([]string{"Id"})
+	rows = rows.AddRow(idUser)
+
+	sqlQuery := "SELECT id_user FROM users_comment WHERE id_user = $1 AND id_film = $2"
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(sqlQuery)).
+		WithArgs(idUser, idFilm).
+		WillReturnRows(rows)
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	found, err := repo.HasUsersComment(idUser, idFilm)
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+		return
+	}
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if !found {
+		t.Errorf("waited to find comment")
+		return
+	}
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(sqlQuery)).
+		WithArgs(idUser, idFilm).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	found, err = repo.HasUsersComment(idUser, idFilm)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if found {
+		t.Errorf("waited not to find comment")
 		return
 	}
 }
