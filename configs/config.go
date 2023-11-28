@@ -1,6 +1,7 @@
 package configs
 
 import (
+	"flag"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -29,8 +30,11 @@ type DbRedisCfg struct {
 }
 
 func ReadCsrfRedisConfig() (*DbRedisCfg, error) {
+	var path string
+	flag.StringVar(&path, "config_path", "../../configs/db_csrf.yaml", "Путь к конфигу")
+
 	csrfConfig := DbRedisCfg{}
-	csrfFile, err := os.ReadFile("../../configs/db_csrf.yaml")
+	csrfFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
