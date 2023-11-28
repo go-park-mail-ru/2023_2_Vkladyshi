@@ -12,7 +12,6 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/csrf"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
@@ -24,7 +23,6 @@ type Core struct {
 	mutex      sync.RWMutex
 	lg         *slog.Logger
 	users      profile.IUserRepo
-	comments   comment.ICommentRepo
 }
 
 type Session struct {
@@ -51,17 +49,12 @@ func GetCore(cfg_sql configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	comments, err := comment.GetCommentRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
+
 	core := Core{
 		sessions:   *session,
 		csrfTokens: *csrf,
 		lg:         lg.With("module", "core"),
 		users:      users,
-		comments:   comments,
 	}
 	return &core, nil
 }
