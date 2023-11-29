@@ -25,10 +25,6 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 		lg:   l.With("module", "api"),
 	}
 	mx := http.NewServeMux()
-	mx.HandleFunc("/signup", api.Signup)
-	mx.HandleFunc("/signin", api.Signin)
-	mx.HandleFunc("/logout", api.LogoutSession)
-	mx.HandleFunc("/authcheck", api.AuthAccept)
 	mx.HandleFunc("/api/v1/settings", api.Profile)
 	mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
 
