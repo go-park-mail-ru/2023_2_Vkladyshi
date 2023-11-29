@@ -8,21 +8,24 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/usecase"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
 type API struct {
-	core usecase.ICore
-	lg   *slog.Logger
-	mx   *http.ServeMux
+	core   usecase.ICore
+	lg     *slog.Logger
+	mx     *http.ServeMux
+	adress string
 }
 
-func GetApi(c *usecase.Core, l *slog.Logger) *API {
+func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	api := &API{
-		core: c,
-		lg:   l.With("module", "api"),
+		core:   c,
+		lg:     l.With("module", "api"),
+		adress: cfg.ServerAdress,
 	}
 	mx := http.NewServeMux()
 	mx.HandleFunc("/api/v1/films", api.Films)
@@ -42,9 +45,9 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 }
 
 func (a *API) ListenAndServe() {
-	err := http.ListenAndServe(":8081", a.mx)
+	err := http.ListenAndServe(a.adress, a.mx)
 	if err != nil {
-		a.lg.Error("ListenAndServe error", "err", err.Error())
+		a.lg.Error("listen and serve error", "err", err.Error())
 	}
 }
 

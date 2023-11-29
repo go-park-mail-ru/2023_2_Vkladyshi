@@ -9,12 +9,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/csrf"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
 )
 
@@ -24,8 +23,8 @@ type Core struct {
 	mutex      sync.RWMutex
 	lg         *slog.Logger
 	users      profile.IUserRepo
-	comments   comment.ICommentRepo
 }
+
 type Session struct {
 	Login     string
 	ExpiresAt time.Time
@@ -45,22 +44,17 @@ func GetCore(cfg_sql configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions
 		return nil, err
 	}
 
-	users, err := profile.GetUserRepo(&cfg_sql, lg)
+	users, err := profile.GetUserRepo(cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	comments, err := comment.GetCommentRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
+
 	core := Core{
 		sessions:   *session,
 		csrfTokens: *csrf,
 		lg:         lg.With("module", "core"),
 		users:      users,
-		comments:   comments,
 	}
 	return &core, nil
 }
@@ -177,7 +171,7 @@ func (core *Core) CreateUserAccount(login string, password string, name string, 
 	return nil
 }
 
-func (core *Core) FindUserAccount(login string, password string) (*profile.UserItem, bool, error) {
+func (core *Core) FindUserAccount(login string, password string) (*models.UserItem, bool, error) {
 	user, found, err := core.users.GetUser(login, password)
 	if err != nil {
 		core.lg.Error("find user error", "err", err.Error())
@@ -204,27 +198,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error) {
-	comments, err := core.comments.GetFilmComments(filmId, first, limit)
-	if err != nil {
-		core.lg.Error("Get Film Comments error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmComments err: %w", err)
-	}
-
-	return comments, nil
-}
-
-func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, text string) error {
-	err := core.comments.AddComment(filmId, userLogin, rating, text)
-	if err != nil {
-		core.lg.Error("Add Comment error", "err", err.Error())
-		return fmt.Errorf("GetActorsCareer err: %w", err)
-	}
-
-	return nil
-}
-
-func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
+func (core *Core) GetUserProfile(login string) (*models.UserItem, error) {
 	profile, err := core.users.GetUserProfile(login)
 	if err != nil {
 		core.lg.Error("GetUserProfile error", "err", err.Error())
@@ -242,14 +216,4 @@ func (core *Core) EditProfile(prevLogin string, login string, password string, e
 	}
 
 	return nil
-}
-
-func (core *Core) HasUsersComment(login string, filmId uint64) (bool, error) {
-	found, err := core.comments.HasUsersComment(login, filmId)
-	if err != nil {
-		core.lg.Error("find users comment error", "err", err.Error())
-		return false, fmt.Errorf("find users comment error: %w", err)
-	}
-
-	return found, nil
 }
