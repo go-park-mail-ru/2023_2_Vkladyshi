@@ -3,10 +3,9 @@ package delivery_auth_grpc
 import (
 	"context"
 	"flag"
-	"io/ioutil"
-	"log"
 	"log/slog"
 	"net"
+	"os"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/session"
@@ -30,6 +29,10 @@ type server struct {
 
 func (s *server) GetId(ctx context.Context, req *pb.FindIdRequest) (*pb.FindIdResponse, error) {
 	login, err := s.sessionRepo.GetUserLogin(ctx, req.Sid, s.lg)
+	if err != nil {
+        return nil, err
+    }
+	
     id, err := s.userRepo.GetUserProfileId(login)
     if err != nil {
         return nil, err
@@ -66,27 +69,32 @@ func ListenAndServeGrpc(l *slog.Logger) {
 	filename := flag.String("config", "config.yaml", "Path to the configuration file")
 	flag.Parse()
 
-	configData, err := ioutil.ReadFile(*filename)
+	file, err := os.Open(*filename)
 	if err != nil {
-		log.Fatalf("failed to read config file: %v", err)
+		l.Error("failed to open config file: %v", err)
+		return
 	}
+	defer file.Close()
 
 	var config Config
-	err = yaml.Unmarshal(configData, &config)
+	err = yaml.NewDecoder(file).Decode(&config)
 	if err != nil {
-		log.Fatalf("failed to parse config file: %v", err)
+		l.Error("failed to parse config file: %v", err)
+		return
 	}
 
 	lis, err := net.Listen(config.ConnectionType, ":"+config.Port)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		l.Error("failed to listen: %v", err)
+		return
 	}
+
 	s := grpc.NewServer()
 	pb.RegisterAuthorizationServer(s, &server{
 		lg: l,
 	})
-	log.Printf("Server started on %s port %s", config.ConnectionType, config.Port)
 	if err := s.Serve(lis); err != nil {
-		log.Fatalf("failed to serve: %v", err)
+		l.Error("failed to serve: %v", err)
+		return
 	}
 }
