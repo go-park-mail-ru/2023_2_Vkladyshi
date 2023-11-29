@@ -53,7 +53,7 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 
 func (repo *RepoPostgre) GetCalendar() ([]models.DayItem, error) {
 	calendar := []models.DayItem{}
-	day := uint8(1)
+	lastAppendDay := uint8(0)
 	news := ""
 
 	rows, err := repo.db.Query("SELECT title, release_day FROM calendar " +
@@ -64,20 +64,32 @@ func (repo *RepoPostgre) GetCalendar() ([]models.DayItem, error) {
 	}
 	defer rows.Close()
 
+	post1 := models.DayItem{}
 	for rows.Next() {
-		post := models.DayItem{}
-		err := rows.Scan(&post.DayNews, &post.DayNumber)
+		post2 := models.DayItem{}
+		err := rows.Scan(&post2.DayNews, &post2.DayNumber)
 		if err != nil {
 			return nil, fmt.Errorf("get calendar scan err: %w", err)
 		}
 
-		if post.DayNumber != day {
-			calendar = append(calendar, models.DayItem{DayNumber: day, DayNews: news})
-			news = ""
-		} else {
-			news += post.DayNews + " "
+		if post1.DayNumber == 0 {
+			post1 = post2
+			continue
 		}
 
+		if post1.DayNumber != post2.DayNumber {
+			news += post1.DayNews
+			lastAppendDay = post1.DayNumber
+
+			calendar = append(calendar, models.DayItem{DayNumber: lastAppendDay, DayNews: news})
+			news = ""
+		} else {
+			news += post1.DayNews + " "
+		}
+		post1 = post2
+	}
+	if lastAppendDay != post1.DayNumber {
+		calendar = append(calendar, models.DayItem{DayNumber: post1.DayNumber, DayNews: news + post1.DayNews})
 	}
 
 	return calendar, nil

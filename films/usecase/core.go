@@ -223,15 +223,15 @@ func (core *Core) FavoriteFilmsRemove(userId uint64, filmId uint64) error {
 }
 
 func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
-	var result *requests.CalendarResponse
+	result := &requests.CalendarResponse{}
 
-	calendar, err := core.calendar.GetCalendar()
+	news, err := core.calendar.GetCalendar()
 	if err != nil {
 		core.lg.Error("get calendar error", "err", err.Error())
 		return nil, fmt.Errorf("get calendar err: %w", err)
 	}
 
-	result.Days = calendar
+	result.Days = news
 	result.CurrentDay = uint8(time.Now().Day())
 	result.MonthName = time.Now().Month().String()
 	result.MonthText = "Новинки этого месяца"
