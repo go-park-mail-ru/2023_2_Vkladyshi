@@ -13,6 +13,7 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/session"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 type ICore interface {
@@ -20,10 +21,10 @@ type ICore interface {
 	KillSession(ctx context.Context, sid string) error
 	FindActiveSession(ctx context.Context, sid string) (bool, error)
 	CreateUserAccount(login string, password string, name string, birthDate string, email string) error
-	FindUserAccount(login string, password string) (*profile.UserItem, bool, error)
+	FindUserAccount(login string, password string) (*models.UserItem, bool, error)
 	FindUserByLogin(login string) (bool, error)
 	GetUserName(ctx context.Context, sid string) (string, error)
-	GetUserProfile(login string) (*profile.UserItem, error)
+	GetUserProfile(login string) (*models.UserItem, error)
 	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error
 }
 
@@ -141,7 +142,7 @@ func (core *Core) CreateUserAccount(login string, password string, name string, 
 	return nil
 }
 
-func (core *Core) FindUserAccount(login string, password string) (*profile.UserItem, bool, error) {
+func (core *Core) FindUserAccount(login string, password string) (*models.UserItem, bool, error) {
 	user, found, err := core.users.GetUser(login, password)
 	if err != nil {
 		core.lg.Error("find user error", "err", err.Error())
@@ -168,7 +169,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
+func (core *Core) GetUserProfile(login string) (*models.UserItem, error) {
 	profile, err := core.users.GetUserProfile(login)
 	if err != nil {
 		core.lg.Error("GetUserProfile error", "err", err.Error())
