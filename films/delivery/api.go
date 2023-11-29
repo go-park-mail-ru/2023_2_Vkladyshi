@@ -15,15 +15,17 @@ import (
 )
 
 type API struct {
-	core usecase.ICore
-	lg   *slog.Logger
-	mx   *http.ServeMux
+	core   usecase.ICore
+	lg     *slog.Logger
+	mx     *http.ServeMux
+	adress string
 }
 
-func GetApi(c *usecase.Core, l *slog.Logger) *API {
+func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	api := &API{
-		core: c,
-		lg:   l.With("module", "api"),
+		core:   c,
+		lg:     l.With("module", "api"),
+		adress: cfg.ServerAdress,
 	}
 	mx := http.NewServeMux()
 	mx.HandleFunc("/api/v1/films", api.Films)
@@ -42,8 +44,8 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	return api
 }
 
-func (a *API) ListenAndServe(cfg *configs.DbDsnCfg) {
-	err := http.ListenAndServe(cfg.ServerAdress, a.mx)
+func (a *API) ListenAndServe() {
+	err := http.ListenAndServe(a.adress, a.mx)
 	if err != nil {
 		a.lg.Error("listen and serve error", "err", err.Error())
 	}

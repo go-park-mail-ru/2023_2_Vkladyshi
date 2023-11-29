@@ -34,7 +34,7 @@ func main() {
 	}
 
 	core := usecase.GetCore(config, lg, comments)
-	api := delivery.GetApi(core, lg)
+	api := delivery.GetApi(core, lg, config)
 
-	api.ListenAndServe(config)
+	api.ListenAndServe()
 }

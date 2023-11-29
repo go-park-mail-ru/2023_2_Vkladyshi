@@ -10,6 +10,8 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
+//go:generate mockgen -source=core.go -destination=../mocks/core_mock.go -package=mocks
+
 type ICore interface {
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error)
 	AddComment(filmId uint64, userId uint64, rating uint16, text string) (bool, error)

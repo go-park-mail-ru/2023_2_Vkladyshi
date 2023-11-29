@@ -13,6 +13,8 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 )
 
+//go:generate mockgen -source=repo_comment.go -destination=../../mocks/repo_mock.go -package=mocks
+
 type ICommentRepo interface {
 	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error)
 	AddComment(filmId uint64, userId uint64, rating uint16, text string) error
