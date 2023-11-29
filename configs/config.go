@@ -20,6 +20,7 @@ type DbDsnCfg struct {
 	Genres_db     string `yaml:"genres_db"`
 	Crew_db       string `yaml:"crew_db"`
 	Profession_db string `yaml:"profession_db"`
+	Calendar_db   string `yaml:"calendar_db"`
 	ServerAdress  string `yaml:"server_adress"`
 }
 
@@ -44,6 +45,7 @@ type DbRedisCfg struct {
 }
 
 func ReadCsrfRedisConfig() (*DbRedisCfg, error) {
+	flag.Parse()
 	var path string
 	flag.StringVar(&path, "config_path", "../../configs/db_csrf.yaml", "Путь к конфигу")
 
@@ -92,6 +94,7 @@ func ReadConfig() (*DbDsnCfg, error) {
 }
 
 func ReadFilmConfig() (*DbDsnCfg, error) {
+	flag.Parse()
 	var path string
 	flag.StringVar(&path, "films_config_path", "../../configs/db_film_dsn.yaml", "Путь к конфигу фильмов")
 
@@ -110,6 +113,7 @@ func ReadFilmConfig() (*DbDsnCfg, error) {
 }
 
 func ReadCommentConfig() (*CommentCfg, error) {
+	flag.Parse()
 	var path string
 	flag.StringVar(&path, "comments_config_path", "../../configs/db_comment_dsn.yaml", "Путь к конфигу комментов")
 

@@ -42,13 +42,16 @@ type Core struct {
 	calendar   calendar.ICalendarRepo
 }
 
-func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger, films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo) *Core {
+func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger,
+	films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo, calendar calendar.ICalendarRepo,
+) *Core {
 	core := Core{
 		lg:         lg.With("module", "core"),
 		films:      films,
 		genres:     genres,
 		crew:       actors,
 		profession: professions,
+		calendar:   calendar,
 	}
 	return &core
 }

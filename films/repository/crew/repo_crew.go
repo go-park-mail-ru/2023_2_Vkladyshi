@@ -24,7 +24,7 @@ type RepoPostgre struct {
 	db *sql.DB
 }
 
-func GetCrewRepo(config configs.DbDsnCfg, lg *slog.Logger) (*RepoPostgre, error) {
+func GetCrewRepo(config *configs.DbDsnCfg, lg *slog.Logger) (*RepoPostgre, error) {
 	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
 		config.User, config.DbName, config.Password, config.Host, config.Port, config.Sslmode)
 	db, err := sql.Open("pgx", dsn)

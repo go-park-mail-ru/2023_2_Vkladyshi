@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"log/slog"
 
+	auth "github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/proto"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
+	"google.golang.org/grpc"
 )
 
 //go:generate mockgen -source=core.go -destination=../mocks/core_mock.go -package=mocks
@@ -60,7 +62,20 @@ func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text s
 	return false, nil
 }
 
-// TEMPORARY. waiting auth service
 func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
-	return 0, nil
+	conn, err := grpc.Dial(":8081", grpc.WithInsecure())
+	if err != nil {
+		core.lg.Error("grpc connect error", "err", err.Error())
+		return 0, fmt.Errorf("grpc connect err: %w", err)
+	}
+	client := auth.NewAuthorizationClient(conn)
+
+	request := auth.FindIdRequest{Sid: sid}
+
+	response, err := client.GetId(ctx, &request)
+	if err != nil {
+		core.lg.Error("get user id error", "err", err.Error())
+		return 0, fmt.Errorf("get user id err: %w", err)
+	}
+	return uint64(response.Value), nil
 }
