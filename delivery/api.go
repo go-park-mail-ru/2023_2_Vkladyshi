@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/film"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/usecase"
 )
 
@@ -30,13 +30,10 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/signin", api.Signin)
 	mx.HandleFunc("/logout", api.LogoutSession)
 	mx.HandleFunc("/authcheck", api.AuthAccept)
-	mx.HandleFunc("/api/v1/films", api.Films)
-	mx.HandleFunc("/api/v1/film", api.Film)
-	mx.HandleFunc("/api/v1/actor", api.Actor)
-	mx.HandleFunc("/api/v1/comment", api.Comment)
-	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 	mx.HandleFunc("/api/v1/settings", api.Profile)
 	mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
+	mx.HandleFunc("/api/v1/comment", api.Comment)
+	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 
 	api.mx = mx
 
@@ -44,7 +41,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 }
 
 func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	csrfToken := r.Header.Get("x-csrf-token")
 
@@ -52,12 +49,12 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if csrfToken != "" && found {
 		w.Header().Set("X-CSRF-Token", csrfToken)
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -65,12 +62,12 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	w.Header().Set("X-CSRF-Token", token)
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) ListenAndServe() {
@@ -80,91 +77,20 @@ func (a *API) ListenAndServe() {
 	}
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response Response) {
-	jsonResponse, err := json.Marshal(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		a.lg.Error("failed to pack json", "err", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(jsonResponse)
-	if err != nil {
-		a.lg.Error("failed to send response", "err", err.Error())
-	}
-}
-
-func (a *API) Films(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
-
-	if r.Method != http.MethodGet {
-		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
-		return
-	}
-
-	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
-	if err != nil {
-		page = 1
-	}
-	pageSize, err := strconv.ParseUint(r.URL.Query().Get("page_size"), 10, 64)
-	if err != nil {
-		pageSize = 8
-	}
-
-	genreId, err := strconv.ParseUint(r.URL.Query().Get("collection_id"), 10, 64)
-	if err != nil {
-		genreId = 0
-	}
-
-	var films []film.FilmItem
-
-	if genreId == 0 {
-		films, err = a.core.GetFilms(uint64((page-1)*pageSize), pageSize)
-	} else {
-		films, err = a.core.GetFilmsByGenre(genreId, uint64((page-1)*pageSize), pageSize)
-	}
-	if err != nil {
-		a.lg.Error("Films error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-
-	genre, err := a.core.GetGenre(genreId)
-	if err != nil {
-		a.lg.Error("Films get genre error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	filmsResponse := FilmsResponse{
-		Page:           page,
-		PageSize:       pageSize,
-		Total:          uint64(len(films)),
-		CollectionName: genre,
-		Films:          films,
-	}
-	response.Body = filmsResponse
-
-	a.SendResponse(w, response)
-}
-
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	found, _ := a.core.FindActiveSession(r.Context(), session.Value)
 	if !found {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	} else {
 		err := a.core.KillSession(r.Context(), session.Value)
@@ -175,11 +101,11 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, session)
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	var authorized bool
 
 	session, err := r.Cookie("session_id")
@@ -189,32 +115,42 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 
 	if !authorized {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	login, err := a.core.GetUserName(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("auth accept error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
-	a.SendResponse(w, response)
+	authCheckResponse := requests.AuthCheckResponse{Login: login}
+	response.Body = authCheckResponse
+
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
-	var request SigninRequest
+	var request requests.SigninRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	if err = json.Unmarshal(body, &request); err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -222,12 +158,12 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signin error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if !found {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	} else {
 		sid, session, _ := a.core.CreateSession(r.Context(), user.Login)
@@ -241,24 +177,24 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, cookie)
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
-	var request SignupRequest
+	var request requests.SignupRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -266,7 +202,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -274,12 +210,12 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if found {
 		response.Status = http.StatusConflict
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
@@ -292,146 +228,21 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		response.Status = http.StatusBadRequest
 	}
 
-	a.SendResponse(w, response)
-}
-
-func (a *API) Film(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
-	if r.Method != http.MethodGet {
-		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
-		return
-	}
-
-	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
-	if err != nil {
-		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
-		return
-	}
-
-	film, err := a.core.GetFilm(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	if film == nil {
-		response.Status = http.StatusNotFound
-		a.SendResponse(w, response)
-		return
-	}
-	genres, err := a.core.GetFilmGenres(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	rating, number, err := a.core.GetFilmRating(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	directors, err := a.core.GetFilmDirectors(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	scenarists, err := a.core.GetFilmScenarists(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	characters, err := a.core.GetFilmCharacters(filmId)
-	if err != nil {
-		a.lg.Error("Film error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-
-	filmResponse := FilmResponse{
-		Film:       *film,
-		Genres:     genres,
-		Rating:     rating,
-		Number:     number,
-		Directors:  directors,
-		Scenarists: scenarists,
-		Characters: characters,
-	}
-	response.Body = filmResponse
-
-	a.SendResponse(w, response)
-}
-
-func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
-	if r.Method != http.MethodGet {
-		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
-		return
-	}
-
-	actorId, err := strconv.ParseUint(r.URL.Query().Get("actor_id"), 10, 64)
-	if err != nil {
-		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
-		return
-	}
-
-	actor, err := a.core.GetActor(actorId)
-	if err != nil {
-		a.lg.Error("Actor error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-	if actor == nil {
-		response.Status = http.StatusNotFound
-		a.SendResponse(w, response)
-		return
-	}
-	career, err := a.core.GetActorsCareer(actorId)
-	if err != nil {
-		a.lg.Error("Actor error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
-		return
-	}
-
-	actorResponse := ActorResponse{
-		Name:      actor.Name,
-		Photo:     actor.Photo,
-		BirthDate: actor.Birthdate,
-		Country:   actor.Country,
-		Info:      actor.Info,
-		Career:    career,
-	}
-
-	response.Body = actorResponse
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
@@ -447,34 +258,34 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Comment", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
-	commentsResponse := CommentResponse{Comments: comments}
+	commentsResponse := requests.CommentResponse{Comments: comments}
 
 	response.Body = commentsResponse
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if err != nil {
 		a.lg.Error("Add comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -482,22 +293,35 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Add comment error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
-	var commentRequest CommentRequest
+	var commentRequest requests.CommentRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	if err = json.Unmarshal(body, &commentRequest); err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	found, err := a.core.HasUsersComment(login, commentRequest.FilmId)
+	if err != nil {
+		a.lg.Error("find comment error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	if found {
+		response.Status = http.StatusNotAcceptable
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -507,16 +331,16 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		response.Status = http.StatusInternalServerError
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
-	response := Response{Status: http.StatusOK, Body: nil}
+	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method == http.MethodGet {
 		session, err := r.Cookie("session_id")
 		if err == http.ErrNoCookie {
 			response.Status = http.StatusUnauthorized
-			a.SendResponse(w, response)
+			requests.SendResponse(w, response, a.lg)
 			return
 		}
 
@@ -528,11 +352,11 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		profile, err := a.core.GetUserProfile(login)
 		if err != nil {
 			response.Status = http.StatusInternalServerError
-			a.SendResponse(w, response)
+			requests.SendResponse(w, response, a.lg)
 			return
 		}
 
-		profileResponse := ProfileResponse{
+		profileResponse := requests.ProfileResponse{
 			Email:     profile.Email,
 			Name:      profile.Name,
 			Login:     profile.Login,
@@ -541,18 +365,18 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response.Body = profileResponse
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -565,7 +389,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err1 != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	email := r.FormValue("email")
@@ -581,10 +405,10 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			a.lg.Error("Post profile error", "err", err.Error())
 			response.Status = http.StatusInternalServerError
-			a.SendResponse(w, response)
+			requests.SendResponse(w, response, a.lg)
 			return
 		}
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -593,7 +417,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil && handler != nil && photo != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -601,7 +425,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	defer filePhoto.Close()
@@ -610,7 +434,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -618,9 +442,9 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }

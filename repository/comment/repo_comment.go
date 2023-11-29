@@ -8,14 +8,15 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 
 	_ "github.com/jackc/pgx/stdlib"
 )
 
 type ICommentRepo interface {
-	GetFilmRating(filmId uint64) (float64, uint64, error)
-	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error)
+	GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error)
 	AddComment(filmId uint64, userId string, rating uint16, text string) error
+	HasUsersComment(login string, filmId uint64) (bool, error)
 }
 
 type RepoPostgre struct {
@@ -54,27 +55,11 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
-	var rating sql.NullFloat64
-	var number sql.NullInt64
-	err := repo.db.QueryRow(
-		"SELECT AVG(rating), COUNT(rating) FROM users_comment "+
-			"WHERE id_film = $1", filmId).Scan(&rating, &number)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, 0, nil
-		}
-		return 0, 0, fmt.Errorf("GetFilmRating err: %w", err)
-	}
-
-	return rating.Float64, uint64(number.Int64), nil
-}
-
-func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]CommentItem, error) {
-	comments := []CommentItem{}
+func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error) {
+	comments := []models.CommentItem{}
 
 	rows, err := repo.db.Query(
-		"SELECT profile.login, rating, comment FROM users_comment "+
+		"SELECT profile.login, rating, comment, profile.photo FROM users_comment "+
 			"JOIN profile ON users_comment.id_user = profile.id "+
 			"WHERE id_film = $1 "+
 			"OFFSET $2 LIMIT $3", filmId, first, limit)
@@ -84,8 +69,8 @@ func (repo *RepoPostgre) GetFilmComments(filmId uint64, first uint64, limit uint
 	defer rows.Close()
 
 	for rows.Next() {
-		post := CommentItem{}
-		err := rows.Scan(&post.Username, &post.Rating, &post.Comment)
+		post := models.CommentItem{}
+		err := rows.Scan(&post.Username, &post.Rating, &post.Comment, &post.Photo)
 		if err != nil {
 			return nil, fmt.Errorf("GetFilmRating scan err: %w", err)
 		}
@@ -105,4 +90,21 @@ func (repo *RepoPostgre) AddComment(filmId uint64, userLogin string, rating uint
 	}
 
 	return nil
+}
+
+func (repo *RepoPostgre) HasUsersComment(login string, filmId uint64) (bool, error) {
+	var id uint64
+	err := repo.db.QueryRow(
+		"SELECT id_user FROM users_comment "+
+			"JOIN profile ON users_comment.id_user = profile.id "+
+			"WHERE profile.login = $1 AND users_comment.id_film = $2", login, filmId).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
 }

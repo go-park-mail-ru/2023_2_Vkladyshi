@@ -7,70 +7,8 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
-
-func TestGetFilmRating(t *testing.T) {
-	db, mock, err := sqlmock.New()
-	if err != nil {
-		t.Fatalf("cant create mock: %s", err)
-	}
-	defer db.Close()
-
-	rows := sqlmock.NewRows([]string{"Average", "Amount"})
-
-	expectRating := 4.2
-	expectAmount := uint64(3)
-
-	rows = rows.AddRow(expectRating, expectAmount)
-
-	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT AVG(rating), COUNT(rating) FROM users_comment WHERE id_film")).
-		WithArgs(1).
-		WillReturnRows(rows)
-
-	repo := &RepoPostgre{
-		db: db,
-	}
-
-	rating, number, err := repo.GetFilmRating(1)
-	if err != nil {
-		t.Errorf("GetFilm error: %s", err)
-	}
-
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-		return
-	}
-
-	if rating != expectRating {
-		t.Errorf("results not match, want %v, have %v", expectRating, rating)
-		return
-	}
-	if number != expectAmount {
-		t.Errorf("results not match, want %v, have %v", expectAmount, number)
-	}
-
-	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT AVG(rating), COUNT(rating) FROM users_comment WHERE id_film")).
-		WithArgs(1).
-		WillReturnError(fmt.Errorf("db_error"))
-
-	rating, number, err = repo.GetFilmRating(1)
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-		return
-	}
-	if err == nil {
-		t.Errorf("expected error, got nil")
-		return
-	}
-	if rating != 0 {
-		t.Errorf("expected rating 0, got %f", rating)
-	}
-	if number != 0 {
-		t.Errorf("expected number 0, got %d", number)
-	}
-}
 
 func TestGetFilmComments(t *testing.T) {
 	db, mock, err := sqlmock.New()
@@ -79,18 +17,18 @@ func TestGetFilmComments(t *testing.T) {
 	}
 	defer db.Close()
 
-	rows := sqlmock.NewRows([]string{"Login", "Rating", "Comment"})
+	rows := sqlmock.NewRows([]string{"Login", "Rating", "Comment", "Photo"})
 
-	expect := []CommentItem{
-		{Username: "l1", Rating: 4, Comment: "c1"},
+	expect := []models.CommentItem{
+		{Username: "l1", Rating: 4, Comment: "c1", Photo: "p1"},
 	}
 
 	for _, item := range expect {
-		rows = rows.AddRow(item.Username, item.Rating, item.Comment)
+		rows = rows.AddRow(item.Username, item.Rating, item.Comment, item.Photo)
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT profile.login, rating, comment FROM users_comment JOIN profile ON users_comment.id_user = profile.id WHERE id_film = $1 OFFSET $2 LIMIT $3")).
+		regexp.QuoteMeta("SELECT profile.login, rating, comment, profile.photo FROM users_comment JOIN profile ON users_comment.id_user = profile.id WHERE id_film = $1 OFFSET $2 LIMIT $3")).
 		WithArgs(1, 0, 5).
 		WillReturnRows(rows)
 
@@ -114,7 +52,7 @@ func TestGetFilmComments(t *testing.T) {
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT profile.login, rating, comment FROM users_comment JOIN profile ON users_comment.id_user = profile.id WHERE id_film = $1 OFFSET $2 LIMIT $3")).
+		regexp.QuoteMeta("SELECT profile.login, rating, comment, profile.photo FROM users_comment JOIN profile ON users_comment.id_user = profile.id WHERE id_film = $1 OFFSET $2 LIMIT $3")).
 		WithArgs(1, 0, 5).
 		WillReturnError(fmt.Errorf("db_error"))
 
@@ -139,7 +77,7 @@ func TestAddComment(t *testing.T) {
 	}
 	defer db.Close()
 
-	testComment := CommentItem{
+	testComment := models.CommentItem{
 		Username: "l1",
 		IdFilm:   1,
 		Rating:   1,

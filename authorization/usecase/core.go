@@ -10,34 +10,21 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/profile"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/session"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/comment"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/csrf"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/repository/session"
 )
 
 type Core struct {
 	sessions   session.SessionRepo
-	csrfTokens csrf.CsrfRepo
 	mutex      sync.RWMutex
 	lg         *slog.Logger
 	users      profile.IUserRepo
-	comments   comment.ICommentRepo
-}
-type Session struct {
-	Login     string
-	ExpiresAt time.Time
 }
 
-func GetCore(cfg_sql configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions configs.DbRedisCfg, lg *slog.Logger) (*Core, error) {
-	csrf, err := csrf.GetCsrfRepo(cfg_csrf, lg)
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-	if err != nil {
-		lg.Error("Csrf repository is not responding")
-		return nil, err
-	}
+func GetCore(cfg_sql *configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions configs.DbRedisCfg, lg *slog.Logger) (*Core, error) {
 	session, err := session.GetSessionRepo(cfg_sessions, lg)
 
 	if err != nil {
@@ -45,63 +32,28 @@ func GetCore(cfg_sql configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_sessions
 		return nil, err
 	}
 
-	users, err := profile.GetUserRepo(&cfg_sql, lg)
+	users, err := profile.GetUserRepo(cfg_sql, lg)
 	if err != nil {
 		lg.Error("cant create repo")
 		return nil, err
 	}
-	comments, err := comment.GetCommentRepo(cfg_sql, lg)
-	if err != nil {
-		lg.Error("cant create repo")
-		return nil, err
-	}
+
 	core := Core{
 		sessions:   *session,
-		csrfTokens: *csrf,
 		lg:         lg.With("module", "core"),
 		users:      users,
-		comments:   comments,
 	}
 	return &core, nil
 }
 
-var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-
-func (core *Core) CheckCsrfToken(ctx context.Context, token string) (bool, error) {
-	core.mutex.RLock()
-	found, err := core.csrfTokens.CheckActiveCsrf(ctx, token, core.lg)
-	core.mutex.RUnlock()
-
+func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
+	err := core.users.EditProfile(prevLogin, login, password, email, birthDate, photo)
 	if err != nil {
-		return false, err
+		core.lg.Error("Edit profile error", "err", err.Error())
+		return fmt.Errorf("Edit profile error: %w", err)
 	}
 
-	return found, err
-}
-
-func (core *Core) CreateCsrfToken(ctx context.Context) (string, error) {
-	sid := RandStringRunes(32)
-
-	core.mutex.Lock()
-	csrfAdded, err := core.csrfTokens.AddCsrf(
-		ctx,
-		models.Csrf{
-			SID:       sid,
-			ExpiresAt: time.Now().Add(3 * time.Hour),
-		},
-		core.lg,
-	)
-	core.mutex.Unlock()
-
-	if !csrfAdded && err != nil {
-		return "", err
-	}
-
-	if !csrfAdded {
-		return "", nil
-	}
-
-	return sid, nil
+	return nil
 }
 
 func (core *Core) GetUserName(ctx context.Context, sid string) (string, error) {
@@ -116,10 +68,10 @@ func (core *Core) GetUserName(ctx context.Context, sid string) (string, error) {
 	return login, nil
 }
 
-func (core *Core) CreateSession(ctx context.Context, login string) (string, models.Session, error) {
+func (core *Core) CreateSession(ctx context.Context, login string) (string, session.Session, error) {
 	sid := RandStringRunes(32)
 
-	newSession := models.Session{
+	newSession := session.Session{
 		Login:     login,
 		SID:       sid,
 		ExpiresAt: time.Now().Add(24 * time.Hour),
@@ -130,11 +82,11 @@ func (core *Core) CreateSession(ctx context.Context, login string) (string, mode
 	core.mutex.Unlock()
 
 	if !sessionAdded && err != nil {
-		return "", models.Session{}, err
+		return "", session.Session{}, err
 	}
 
 	if !sessionAdded {
-		return "", models.Session{}, nil
+		return "", session.Session{}, nil
 	}
 
 	return sid, newSession, nil
@@ -204,26 +156,6 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]models.CommentItem, error) {
-	comments, err := core.comments.GetFilmComments(filmId, first, limit)
-	if err != nil {
-		core.lg.Error("Get Film Comments error", "err", err.Error())
-		return nil, fmt.Errorf("GetFilmComments err: %w", err)
-	}
-
-	return comments, nil
-}
-
-func (core *Core) AddComment(filmId uint64, userLogin string, rating uint16, text string) error {
-	err := core.comments.AddComment(filmId, userLogin, rating, text)
-	if err != nil {
-		core.lg.Error("Add Comment error", "err", err.Error())
-		return fmt.Errorf("GetActorsCareer err: %w", err)
-	}
-
-	return nil
-}
-
 func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
 	profile, err := core.users.GetUserProfile(login)
 	if err != nil {
@@ -234,22 +166,3 @@ func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
 	return profile, nil
 }
 
-func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
-	err := core.users.EditProfile(prevLogin, login, password, email, birthDate, photo)
-	if err != nil {
-		core.lg.Error("Edit profile error", "err", err.Error())
-		return fmt.Errorf("Edit profile error: %w", err)
-	}
-
-	return nil
-}
-
-func (core *Core) HasUsersComment(login string, filmId uint64) (bool, error) {
-	found, err := core.comments.HasUsersComment(login, filmId)
-	if err != nil {
-		core.lg.Error("find users comment error", "err", err.Error())
-		return false, fmt.Errorf("find users comment error: %w", err)
-	}
-
-	return found, nil
-}
