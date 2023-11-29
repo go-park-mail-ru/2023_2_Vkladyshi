@@ -1,4 +1,4 @@
-package requests
+package delivery
 
 type SignupRequest struct {
 	Login     string `json:"login"`
