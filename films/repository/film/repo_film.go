@@ -155,7 +155,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 ) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
-	hasWhere := false
+	var hasWhere bool
 	paramNum := 1
 	var params []interface{}
 	var s strings.Builder
