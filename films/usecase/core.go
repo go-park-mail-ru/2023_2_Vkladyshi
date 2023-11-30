@@ -25,7 +25,7 @@ type ICore interface {
 	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
 	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 	) ([]models.FilmItem, error)
 	FavoriteFilms(userId uint64) ([]models.FilmItem, error)
 	FavoriteFilmsAdd(userId uint64, filmId uint64) error
@@ -180,7 +180,7 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 }
 
 func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+	ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 ) ([]models.FilmItem, error) {
 
 	films, err := core.films.FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)

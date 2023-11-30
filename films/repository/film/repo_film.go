@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,7 +22,7 @@ type IFilmsRepo interface {
 	GetFilm(filmId uint64) (*models.FilmItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 	) ([]models.FilmItem, error)
 	GetFavoriteFilms(userId uint64) ([]models.FilmItem, error)
 	AddFavoriteFilm(userId uint64, filmId uint64) error
@@ -150,42 +151,92 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 }
 
 func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+	ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 ) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
+	hasWhere := false
+	paramNum := 1
+	var params []interface{}
 	var s strings.Builder
 	s.WriteString(
 		"SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film " +
 			"JOIN films_genre ON film.id = films_genre.id_film " +
-			"JOIN genre ON genre.id = films_genre.id_genre " +
 			"JOIN users_comment ON film.id = users_comment.id_film " +
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
-			"JOIN crew ON person_in_film.id_person = crew.id WHERE ")
+			"JOIN crew ON person_in_film.id_person = crew.id ")
 	if title != "" {
-		s.WriteString("fts @@ to_tsquery($5) AND ")
+		s.WriteString("WHERE ")
+		hasWhere = true
+		s.WriteString("fts @@ to_tsquery($" + strconv.Itoa(paramNum) + ") ")
+		paramNum++
+		params = append(params, title)
 	}
 	if dateFrom != "" {
-		s.WriteString("release_date >= '$6' AND ")
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("release_date >= $" + strconv.Itoa(paramNum) + " ")
+		paramNum++
+		params = append(params, dateFrom)
 	}
 	if dateTo != "" {
-		s.WriteString("release_date <= '$7' AND ")
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("release_date <= $" + strconv.Itoa(paramNum) + " ")
+		paramNum++
+		params = append(params, dateTo)
 	}
 	if mpaa != "" {
-		s.WriteString("mpaa = $8 AND ")
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("mpaa = $" + strconv.Itoa(paramNum) + " ")
+		paramNum++
+		params = append(params, mpaa)
+	}
+	if len(genres) > 0 {
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("(CASE WHEN array_length($" + strconv.Itoa(paramNum) + "::int[], 1)> 0 " +
+			"THEN films_genre.id_genre = ANY ($" + strconv.Itoa(paramNum) + "::int[]) ELSE TRUE END) ")
+		paramNum++
+		params = append(params, pq.Array(genres))
+	}
+	if actors[0] != "" {
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("(CASE WHEN array_length($" + strconv.Itoa(paramNum) + "::varchar[], 1)> 0 " +
+			"THEN crew.name = ANY ($" + strconv.Itoa(paramNum) + "::varchar[]) ELSE TRUE END) ")
+		paramNum++
+		params = append(params, pq.Array(actors))
 	}
 	s.WriteString(
-		"(CASE WHEN array_length($1::varchar[], 1)> 0 " +
-			"THEN genre.title = ANY ($1::varchar[]) ELSE TRUE END) AND (CASE " +
-			"WHEN array_length($2::varchar[], 1)> 0 " +
-			"THEN crew.name = ANY ($2::varchar[]) ELSE TRUE END) " +
-
-			"GROUP BY film.title, film.id, genre.title " +
-			"HAVING AVG(users_comment.rating) > $3 AND AVG(users_comment.rating) < $4 " +
+		"GROUP BY film.title, film.id " +
+			"HAVING AVG(users_comment.rating) >= $" + strconv.Itoa(paramNum) + " AND AVG(users_comment.rating) <= $" + strconv.Itoa(paramNum+1) + " " +
 			"ORDER BY film.title")
 
-	rows, err := repo.db.Query(s.String(),
-		pq.Array(genres), pq.Array(actors), ratingFrom, ratingTo, title, dateFrom, dateTo, mpaa)
+	fmt.Println("genres:", genres, len(genres), "actors:", actors, len(actors))
+	params = append(params, ratingFrom, ratingTo)
+	rows, err := repo.db.Query(s.String(), params...)
 
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("find film err: %w", err)
