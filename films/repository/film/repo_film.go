@@ -165,7 +165,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 			"JOIN users_comment ON film.id = users_comment.id_film " +
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
 			"JOIN crew ON person_in_film.id_person = crew.id ")
-	if title != "" && !hasWhere {
+	if title != "" {
 		s.WriteString("WHERE ")
 		hasWhere = true
 		s.WriteString("fts @@ to_tsquery($" + strconv.Itoa(paramNum) + ") ")
@@ -220,7 +220,6 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	if actors[0] != "" {
 		if !hasWhere {
 			s.WriteString("WHERE ")
-			hasWhere = true
 		} else {
 			s.WriteString("AND ")
 		}
