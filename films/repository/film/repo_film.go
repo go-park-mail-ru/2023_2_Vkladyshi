@@ -234,11 +234,10 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 			"HAVING AVG(users_comment.rating) >= $" + strconv.Itoa(paramNum) + " AND AVG(users_comment.rating) <= $" + strconv.Itoa(paramNum+1) + " " +
 			"ORDER BY film.title")
 
-	fmt.Println("genres:", genres, len(genres), "actors:", actors, len(actors))
 	params = append(params, ratingFrom, ratingTo)
 	rows, err := repo.db.Query(s.String(), params...)
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return nil, fmt.Errorf("find film err: %w", err)
 	}
 	defer rows.Close()

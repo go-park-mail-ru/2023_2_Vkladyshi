@@ -189,6 +189,10 @@ func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
 		return nil, fmt.Errorf("find film err: %w", err)
 	}
 
+	if len(films) == 0 {
+		return nil, ErrNotFound
+	}
+
 	return films, nil
 }
 
