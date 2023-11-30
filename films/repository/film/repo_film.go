@@ -155,7 +155,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 ) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
-	var hasWhere bool // nolint:golint
+	var hasWhere bool
 	paramNum := 1
 	var params []interface{}
 	var s strings.Builder
@@ -165,7 +165,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 			"JOIN users_comment ON film.id = users_comment.id_film " +
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
 			"JOIN crew ON person_in_film.id_person = crew.id ")
-	if title != "" {
+	if title != "" && !hasWhere {
 		s.WriteString("WHERE ")
 		hasWhere = true
 		s.WriteString("fts @@ to_tsquery($" + strconv.Itoa(paramNum) + ") ")
