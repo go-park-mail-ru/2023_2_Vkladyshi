@@ -24,7 +24,7 @@ type IFilmsRepo interface {
 	FindFilm(title string, dateFrom string, dateTo string,
 		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 	) ([]models.FilmItem, error)
-	GetFavoriteFilms(userId uint64) ([]models.FilmItem, error)
+	GetFavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	AddFavoriteFilm(userId uint64, filmId uint64) error
 	RemoveFavoriteFilm(userId uint64, filmId uint64) error
 }
@@ -253,13 +253,14 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	return films, nil
 }
 
-func (repo *RepoPostgre) GetFavoriteFilms(userId uint64) ([]models.FilmItem, error) {
+func (repo *RepoPostgre) GetFavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error) {
 	films := []models.FilmItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT film.title, film.id, film.poster FROM film "+
 			"JOIN users_favorite_film ON film.id = users_favorite_film.id_film "+
-			"WHERE id_user = $1", userId)
+			"WHERE id_user = $1 "+
+			"OFFSET $2, LIMIT $3", userId, start, end)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("get favorite films err: %w", err)
 	}

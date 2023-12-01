@@ -229,6 +229,47 @@ func (a *API) FavoriteFilms(w http.ResponseWriter, r *http.Request) {
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
+
+	session, err := r.Cookie("session_id")
+	if err == http.ErrNoCookie {
+		response.Status = http.StatusUnauthorized
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	if err != nil {
+		a.lg.Error("favorite films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	userId, err := a.core.GetUserId(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("favorite films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+	if err != nil {
+		page = 1
+	}
+	pageSize, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
+	if err != nil {
+		pageSize = 8
+	}
+
+	films, err := a.core.FavoriteFilms(userId, uint64((page-1)*pageSize), pageSize)
+	if err != nil {
+		a.lg.Error("favorite films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	response.Body = films
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {

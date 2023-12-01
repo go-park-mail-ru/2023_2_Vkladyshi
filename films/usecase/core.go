@@ -1,11 +1,13 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
+	auth "github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/proto"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/calendar"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/crew"
@@ -14,6 +16,8 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var ErrNotFound = errors.New("not found")
@@ -27,10 +31,11 @@ type ICore interface {
 	FindFilm(title string, dateFrom string, dateTo string,
 		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 	) ([]models.FilmItem, error)
-	FavoriteFilms(userId uint64) ([]models.FilmItem, error)
+	FavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	FavoriteFilmsAdd(userId uint64, filmId uint64) error
 	FavoriteFilmsRemove(userId uint64, filmId uint64) error
 	GetCalendar() (*requests.CalendarResponse, error)
+	GetUserId(ctx context.Context, sid string) (uint64, error)
 }
 
 type Core struct {
@@ -196,8 +201,8 @@ func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
 	return films, nil
 }
 
-func (core *Core) FavoriteFilms(userId uint64) ([]models.FilmItem, error) {
-	films, err := core.films.GetFavoriteFilms(userId)
+func (core *Core) FavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error) {
+	films, err := core.films.GetFavoriteFilms(userId, start, end)
 	if err != nil {
 		core.lg.Error("favorite films error", "err", err.Error())
 		return nil, fmt.Errorf("favorite films err: %w", err)
@@ -241,4 +246,22 @@ func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
 	result.MonthText = "Новинки этого месяца"
 
 	return result, nil
+}
+
+func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
+	conn, err := grpc.Dial(":8081", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		core.lg.Error("grpc connect error", "err", err.Error())
+		return 0, fmt.Errorf("grpc connect err: %w", err)
+	}
+	client := auth.NewAuthorizationClient(conn)
+
+	request := auth.FindIdRequest{Sid: sid}
+
+	response, err := client.GetId(ctx, &request)
+	if err != nil {
+		core.lg.Error("get user id error", "err", err.Error())
+		return 0, fmt.Errorf("get user id err: %w", err)
+	}
+	return uint64(response.Value), nil
 }
