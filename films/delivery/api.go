@@ -279,6 +279,44 @@ func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
+
+	session, err := r.Cookie("session_id")
+	if err == http.ErrNoCookie {
+		response.Status = http.StatusUnauthorized
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	if err != nil {
+		a.lg.Error("favorite films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	userId, err := a.core.GetUserId(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("favorite films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
+
+	err = a.core.FavoriteFilmsAdd(userId, filmId)
+	if err != nil {
+		if errors.Is(err, usecase.ErrNotFound) {
+			response.Status = http.StatusBadRequest
+			requests.SendResponse(w, response, a.lg)
+			return
+		}
+		a.lg.Error("favorite films error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) FavoriteActorsRemove(w http.ResponseWriter, r *http.Request) {

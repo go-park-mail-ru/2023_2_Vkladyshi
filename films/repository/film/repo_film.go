@@ -27,6 +27,7 @@ type IFilmsRepo interface {
 	GetFavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	AddFavoriteFilm(userId uint64, filmId uint64) error
 	RemoveFavoriteFilm(userId uint64, filmId uint64) error
+	CheckFilm(filmId uint64) (bool, error)
 }
 
 type RepoPostgre struct {
@@ -297,4 +298,18 @@ func (repo *RepoPostgre) RemoveFavoriteFilm(userId uint64, filmId uint64) error 
 	}
 
 	return nil
+}
+
+func (repo *RepoPostgre) CheckFilm(filmId uint64) (bool, error) {
+	film := models.FilmItem{}
+	err := repo.db.QueryRow("SELECT id FROM film WHERE id = $1", filmId).Scan(&film.Id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("GetFilm err: %w", err)
+	}
+
+	return true, nil
 }

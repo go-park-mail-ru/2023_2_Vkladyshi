@@ -212,7 +212,16 @@ func (core *Core) FavoriteFilms(userId uint64, start uint64, end uint64) ([]mode
 }
 
 func (core *Core) FavoriteFilmsAdd(userId uint64, filmId uint64) error {
-	err := core.films.AddFavoriteFilm(userId, filmId)
+	found, err := core.films.CheckFilm(filmId)
+	if err != nil {
+		core.lg.Error("favorite film add error", "err", err.Error())
+		return fmt.Errorf("favorite film add err: %w", err)
+	}
+	if !found {
+		return ErrNotFound
+	}
+
+	err = core.films.AddFavoriteFilm(userId, filmId)
 	if err != nil {
 		core.lg.Error("favorite film add error", "err", err.Error())
 		return fmt.Errorf("favorite film add err: %w", err)
