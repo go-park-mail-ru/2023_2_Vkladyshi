@@ -167,41 +167,44 @@ func (repo *RepoPostgre) EditProfile(prevLogin string, login string, password st
 	s.WriteString("UPDATE profile SET ")
 
 	if login != "" {
-		s.WriteString("login = $" + strconv.Itoa(paramNum) + " ")
+		s.WriteString("login = $" + strconv.Itoa(paramNum))
 		paramNum++
 		params = append(params, login)
 	}
 	if photo != "" {
 		if paramNum != 1 {
-			s.WriteString("AND ")
+			s.WriteString(", ")
 		}
-		s.WriteString("photo = $" + strconv.Itoa(paramNum) + " ")
+		s.WriteString("photo = $" + strconv.Itoa(paramNum))
 		paramNum++
 		params = append(params, photo)
 	}
 	if email != "" {
 		if paramNum != 1 {
-			s.WriteString("AND ")
+			s.WriteString(", ")
 		}
-		s.WriteString("email = $" + strconv.Itoa(paramNum) + " ")
+		s.WriteString("email = $" + strconv.Itoa(paramNum))
 		paramNum++
 		params = append(params, email)
 	}
 	if password != "" {
 		if paramNum != 1 {
-			s.WriteString("AND ")
+			s.WriteString(", ")
 		}
-		s.WriteString("password = $" + strconv.Itoa(paramNum) + " ")
+		s.WriteString("password = $" + strconv.Itoa(paramNum))
 		paramNum++
 		params = append(params, password)
 	}
 	if birthDate != "" {
 		if paramNum != 1 {
-			s.WriteString("AND ")
+			s.WriteString(", ")
 		}
-		s.WriteString("birth_date = $" + strconv.Itoa(paramNum) + " ")
+		s.WriteString("birth_date = $" + strconv.Itoa(paramNum))
+		paramNum++
 		params = append(params, birthDate)
 	}
+	s.WriteString(" WHERE login = $" + strconv.Itoa(paramNum))
+	params = append(params, prevLogin)
 	_, err := repo.db.Exec(s.String(), params...)
 	if err != nil {
 		return fmt.Errorf("failed to edit profile in db: %w", err)
