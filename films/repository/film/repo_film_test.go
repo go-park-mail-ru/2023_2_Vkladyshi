@@ -139,7 +139,7 @@ func TestGetFilm(t *testing.T) {
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT * FROM film WHERE id = $1")).
+		regexp.QuoteMeta("SELECT id, title, info, poster, release_date, country, mpaa FROM film WHERE id = $1")).
 		WithArgs(1).
 		WillReturnRows(rows)
 
@@ -163,7 +163,7 @@ func TestGetFilm(t *testing.T) {
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT * FROM film WHERE id = $1")).
+		regexp.QuoteMeta("SELECT id, title, info, poster, release_date, country, mpaa FROM film WHERE id = $1")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
