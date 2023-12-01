@@ -36,6 +36,7 @@ type ICore interface {
 	FavoriteFilmsRemove(userId uint64, filmId uint64) error
 	GetCalendar() (*requests.CalendarResponse, error)
 	GetUserId(ctx context.Context, sid string) (uint64, error)
+	FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.CrewItem, error)
 }
 
 type Core struct {
@@ -273,4 +274,17 @@ func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
 		return 0, fmt.Errorf("get user id err: %w", err)
 	}
 	return uint64(response.Value), nil
+}
+
+func (core *Core) FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.CrewItem, error) {
+	actors, err := core.crew.FindActor(name, birthDate, films, career, country)
+	if err != nil {
+		core.lg.Error("find actor error", "err", err.Error())
+		return nil, fmt.Errorf("find actor err: %w", err)
+	}
+	if len(actors) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return actors, nil
 }

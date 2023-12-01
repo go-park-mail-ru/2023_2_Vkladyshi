@@ -38,6 +38,7 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	mx.HandleFunc("/api/v1/favorite/actor/add", api.FavoriteActorsAdd)
 	mx.HandleFunc("/api/v1/favorite/actor/remove", api.FavoriteActorsRemove)
 	mx.HandleFunc("/api/v1/search/film", api.FindFilm)
+	mx.HandleFunc("/api/v1/search/actor", api.FindActor)
 	mx.HandleFunc("/api/v1/calendar", api.Calendar)
 
 	api.mx = mx
@@ -397,5 +398,46 @@ func (a *API) Calendar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Body = calendar
+	requests.SendResponse(w, response, a.lg)
+}
+
+func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodPost {
+		response.Status = http.StatusMethodNotAllowed
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	var request requests.FindActorRequest
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		a.lg.Error("find actor error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	if err = json.Unmarshal(body, &request); err != nil {
+		a.lg.Error("find actor error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	actors, err := a.core.FindActor(request.Name, request.BirthDate, request.Films, request.Career, request.Country)
+	if err != nil {
+		if errors.Is(err, usecase.ErrNotFound) {
+			response.Status = http.StatusNotFound
+			requests.SendResponse(w, response, a.lg)
+			return
+		}
+		a.lg.Error("find actor error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	response.Body = actors
 	requests.SendResponse(w, response, a.lg)
 }

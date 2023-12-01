@@ -36,3 +36,11 @@ type FindFilmRequest struct {
 	Genres     []uint32 `json:"genres"`
 	Actors     []string `json:"actors"`
 }
+
+type FindActorRequest struct {
+	Name      string   `json:"name"`
+	BirthDate string   `json:"birthday"`
+	Career    []string `json:"amplua"`
+	Films     []string `json:"films"`
+	Country   string   `json:"country"`
+}
