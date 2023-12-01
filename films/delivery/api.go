@@ -234,6 +234,11 @@ func (a *API) FavoriteFilmsAdd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
 
 	err = a.core.FavoriteFilmsAdd(userId, filmId)
 	if err != nil {
@@ -281,6 +286,11 @@ func (a *API) FavoriteFilmsRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
 
 	err = a.core.FavoriteFilmsRemove(userId, filmId)
 	if err != nil {
