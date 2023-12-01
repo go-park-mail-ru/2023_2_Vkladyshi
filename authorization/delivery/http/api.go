@@ -50,35 +50,20 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	return api
 }
 
-func (a *API) SendResponse(w http.ResponseWriter, response requests.Response) {
-	jsonResponse, err := json.Marshal(response)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		a.lg.Error("failed to pack json", "err", err.Error())
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	_, err = w.Write(jsonResponse)
-	if err != nil {
-		a.lg.Error("failed to send response", "err", err.Error())
-	}
-}
-
 func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	found, _ := a.core.FindActiveSession(r.Context(), session.Value)
 	if !found {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	} else {
 		err := a.core.KillSession(r.Context(), session.Value)
@@ -89,7 +74,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, session)
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
@@ -103,28 +88,28 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 
 	if !authorized {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	login, err := a.core.GetUserName(r.Context(), session.Value)
 	if err != nil {
 		a.lg.Error("auth accept error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	authCheckResponse := requests.AuthCheckResponse{Login: login}
 	response.Body = authCheckResponse
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -133,13 +118,13 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
 	if err = json.Unmarshal(body, &request); err != nil {
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -147,12 +132,12 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signin error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if !found {
 		response.Status = http.StatusUnauthorized
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	} else {
 		sid, session, _ := a.core.CreateSession(r.Context(), user.Login)
@@ -166,14 +151,14 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, cookie)
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -183,7 +168,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -191,7 +176,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 
@@ -199,12 +184,12 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	if found {
 		response.Status = http.StatusConflict
-		a.SendResponse(w, response)
+		requests.SendResponse(w, response, a.lg)
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
@@ -217,5 +202,5 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		response.Status = http.StatusBadRequest
 	}
 
-	a.SendResponse(w, response)
+	requests.SendResponse(w, response, a.lg)
 }
