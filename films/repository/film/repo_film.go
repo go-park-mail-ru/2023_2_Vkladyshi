@@ -121,7 +121,7 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]models.FilmItem, 
 func (repo *RepoPostgre) GetFilm(filmId uint64) (*models.FilmItem, error) {
 	film := &models.FilmItem{}
 	err := repo.db.QueryRow(
-		"SELECT * FROM film "+
+		"SELECT id, title, info, poster, release_date, country, mpaa FROM film "+
 			"WHERE id = $1", filmId).
 		Scan(&film.Id, &film.Title, &film.Info, &film.Poster, &film.ReleaseDate, &film.Country, &film.Mpaa)
 	if err != nil {
