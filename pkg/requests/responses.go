@@ -41,7 +41,7 @@ type ActorResponse struct {
 }
 
 type ActorsResponse struct {
-	Actors []models.CrewItem `json:"actors"`
+	Actors []models.Character `json:"actors"`
 }
 
 type CommentResponse struct {
