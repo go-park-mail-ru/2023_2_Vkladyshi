@@ -38,8 +38,8 @@ func main() {
 		lg.Error("cant create core")
 		return
 	}
+	go delivery_auth_grpc.ListenAndServeGrpc(lg)
 	api := delivery_auth.GetApi(core, lg)
 	api.ListenAndServe()
-	delivery_auth_grpc.ListenAndServeGrpc(lg)
-
+	select {}
 }
