@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/usecase"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 )
 
@@ -44,6 +43,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	mx.HandleFunc("/signin", api.Signin)
 	mx.HandleFunc("/logout", api.LogoutSession)
 	mx.HandleFunc("/authcheck", api.AuthAccept)
+	mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
 
 	api.mx = mx
 
@@ -193,7 +193,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
-	if err == errors.InvalideEmail {
+	if err == usecase.InvalideEmail {
 		a.lg.Error("create user error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 	}
@@ -202,5 +202,35 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		response.Status = http.StatusBadRequest
 	}
 
+	requests.SendResponse(w, response, a.lg)
+}
+
+func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+
+	csrfToken := r.Header.Get("x-csrf-token")
+
+	found, err := a.core.CheckCsrfToken(r.Context(), csrfToken)
+	if err != nil {
+		w.Header().Set("X-CSRF-Token", "null")
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	if csrfToken != "" && found {
+		w.Header().Set("X-CSRF-Token", csrfToken)
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	token, err := a.core.CreateCsrfToken(r.Context())
+	if err != nil {
+		w.Header().Set("X-CSRF-Token", "null")
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	w.Header().Set("X-CSRF-Token", token)
 	requests.SendResponse(w, response, a.lg)
 }
