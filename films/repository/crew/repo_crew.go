@@ -16,6 +16,8 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 )
 
+//go:generate mockgen -source=repo_crew.go -destination=../../mocks/crew_repo_mock.go -package=mocks
+
 type ICrewRepo interface {
 	GetFilmDirectors(filmId uint64) ([]models.CrewItem, error)
 	GetFilmScenarists(filmId uint64) ([]models.CrewItem, error)

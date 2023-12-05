@@ -247,8 +247,8 @@ func (a *API) FavoriteFilmsAdd(w http.ResponseWriter, r *http.Request) {
 
 	err = a.core.FavoriteFilmsAdd(userId, filmId)
 	if err != nil {
-		if errors.Is(err, usecase.ErrNotFound) {
-			response.Status = http.StatusBadRequest
+		if errors.Is(err, usecase.ErrFoundFavorite) {
+			response.Status = http.StatusNotAcceptable
 			requests.SendResponse(w, response, a.lg)
 			return
 		}
