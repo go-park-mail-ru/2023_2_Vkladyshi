@@ -351,9 +351,15 @@ func TestGetFilmInfo(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	expectedFilm := &models.FilmItem{Title: "t"}
-	expectedGenres := []models.GenreItem{models.GenreItem{Title: "g1"}}
-	expectedCrew := []models.CrewItem{models.CrewItem{Name: "n"}}
-	expectedCharacters := []models.Character{models.Character{NameActor: "an"}}
+
+	genreItem := models.GenreItem{Title: "g1"}
+	expectedGenres := []models.GenreItem{genreItem}
+
+	crewItem := models.CrewItem{Name: "n"}
+	expectedCrew := []models.CrewItem{crewItem}
+
+	charItem := models.Character{NameActor: "an"}
+	expectedCharacters := []models.Character{charItem}
 	expectedRating := 9.8
 	expectedNumber := uint64(100)
 	expectedResult := &requests.FilmResponse{
