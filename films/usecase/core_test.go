@@ -374,25 +374,24 @@ func TestGetFilmInfo(t *testing.T) {
 	mockFilm := mocks.NewMockIFilmsRepo(mockCtrl)
 	notFound := mockFilm.EXPECT().GetFilm(uint64(1)).Return(&models.FilmItem{}, nil).Times(1)
 	withErr := mockFilm.EXPECT().GetFilm(uint64(1)).Return(nil, fmt.Errorf("repo_error")).Times(1).After(notFound)
-	ok := mockFilm.EXPECT().GetFilm(uint64(1)).Return(expectedFilm, nil).After(withErr).AnyTimes()
+	mockFilm.EXPECT().GetFilm(uint64(1)).Return(expectedFilm, nil).After(withErr).AnyTimes()
 
 	mockGenres := mocks.NewMockIGenreRepo(mockCtrl)
 	withErr = mockGenres.EXPECT().GetFilmGenres(uint64(1)).Return(nil, fmt.Errorf("repo_error")).Times(1)
-	ok = mockGenres.EXPECT().GetFilmGenres(uint64(1)).Return(expectedGenres, nil).AnyTimes().After(withErr)
+	mockGenres.EXPECT().GetFilmGenres(uint64(1)).Return(expectedGenres, nil).AnyTimes().After(withErr)
 
 	withErr = mockFilm.EXPECT().GetFilmRating(uint64(1)).Return(float64(0), uint64(0), fmt.Errorf("repo_error")).Times(1)
-	ok = mockFilm.EXPECT().GetFilmRating(uint64(1)).Return(expectedRating, expectedNumber, nil).AnyTimes().After(withErr)
+	mockFilm.EXPECT().GetFilmRating(uint64(1)).Return(expectedRating, expectedNumber, nil).AnyTimes().After(withErr)
 
 	mockCrew := mocks.NewMockICrewRepo(mockCtrl)
 	withErr = mockCrew.EXPECT().GetFilmDirectors(uint64(1)).Return(nil, fmt.Errorf("repo_error")).Times(1)
-	ok = mockCrew.EXPECT().GetFilmDirectors(uint64(1)).Return(expectedCrew, nil).AnyTimes().After(withErr)
+	mockCrew.EXPECT().GetFilmDirectors(uint64(1)).Return(expectedCrew, nil).AnyTimes().After(withErr)
 
 	withErr = mockCrew.EXPECT().GetFilmScenarists(uint64(1)).Return(nil, fmt.Errorf("repo_error")).Times(1)
-	ok = mockCrew.EXPECT().GetFilmScenarists(uint64(1)).Return(expectedCrew, nil).AnyTimes().After(withErr)
+	mockCrew.EXPECT().GetFilmScenarists(uint64(1)).Return(expectedCrew, nil).AnyTimes().After(withErr)
 
 	withErr = mockCrew.EXPECT().GetFilmCharacters(uint64(1)).Return(nil, fmt.Errorf("repo_error")).Times(1)
-	ok = mockCrew.EXPECT().GetFilmCharacters(uint64(1)).Return(expectedCharacters, nil).AnyTimes().After(withErr)
-	gomock.InOrder(withErr, ok)
+	mockCrew.EXPECT().GetFilmCharacters(uint64(1)).Return(expectedCharacters, nil).AnyTimes().After(withErr)
 
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
