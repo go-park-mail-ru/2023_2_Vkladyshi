@@ -35,7 +35,10 @@ func getExpectedResult(res *requests.Response) *requests.Response {
 	jsonResponse, _ := json.Marshal(res)
 
 	var response requests.Response
-	json.Unmarshal(jsonResponse, &response)
+	err := json.Unmarshal(jsonResponse, &response)
+	if err != nil {
+		fmt.Println("unexpected error")
+	}
 
 	return &response
 }
