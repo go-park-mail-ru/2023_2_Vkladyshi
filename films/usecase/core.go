@@ -25,6 +25,8 @@ var (
 	ErrFoundFavorite = errors.New("found favorite")
 )
 
+//go:generate mockgen -source=core.go -destination=../mocks/core_mock.go -package=mocks
+
 type ICore interface {
 	GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error)
 	GetFilmInfo(filmId uint64) (*requests.FilmResponse, error)
