@@ -254,7 +254,7 @@ func (core *Core) FavoriteFilmsRemove(userId uint64, filmId uint64) error {
 }
 
 func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
-	var result *requests.CalendarResponse
+	result := &requests.CalendarResponse{}
 
 	news, err := core.calendar.GetCalendar()
 	if err != nil {
