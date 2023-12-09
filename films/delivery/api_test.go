@@ -231,12 +231,12 @@ func TestActor(t *testing.T) {
 		},
 		"not found error": {
 			method: http.MethodGet,
-			params: map[string]string{"actor_id": "1"},
+			params: map[string]string{"actor_id": "2"},
 			result: &requests.Response{Status: http.StatusNotFound, Body: nil},
 		},
 		"Ok": {
 			method: http.MethodGet,
-			params: map[string]string{"actor_id": "1"},
+			params: map[string]string{"actor_id": "3"},
 			result: getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectedResponse}),
 		},
 	}
@@ -246,8 +246,8 @@ func TestActor(t *testing.T) {
 
 	mockCore := mocks.NewMockICore(mockCtrl)
 	mockCore.EXPECT().GetActorInfo(uint64(1)).Return(nil, fmt.Errorf("core_err")).Times(1)
-	mockCore.EXPECT().GetActorInfo(uint64(1)).Return(nil, usecase.ErrNotFound).Times(1)
-	mockCore.EXPECT().GetActorInfo(uint64(1)).Return(&expectedResponse, nil).Times(1)
+	mockCore.EXPECT().GetActorInfo(uint64(2)).Return(nil, usecase.ErrNotFound).Times(1)
+	mockCore.EXPECT().GetActorInfo(uint64(3)).Return(&expectedResponse, nil).Times(1)
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 

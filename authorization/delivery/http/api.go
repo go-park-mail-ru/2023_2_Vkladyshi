@@ -3,6 +3,7 @@ package delivery
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -27,11 +28,14 @@ type API struct {
 	mx   *http.ServeMux
 }
 
-func (a *API) ListenAndServe() {
+func (a *API) ListenAndServe() error {
 	err := http.ListenAndServe(":8081", a.mx)
 	if err != nil {
 		a.lg.Error("ListenAndServe error", "err", err.Error())
+		return fmt.Errorf("listen and serve error: %w", err)
 	}
+
+	return nil
 }
 
 func GetApi(c *usecase.Core, l *slog.Logger) *API {

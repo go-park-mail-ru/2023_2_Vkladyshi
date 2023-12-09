@@ -16,13 +16,13 @@ import (
 
 type IUserRepo interface {
 	GetUser(login string, password string) (*models.UserItem, bool, error)
-	GetUserProfileId(login string) (int64, error)
+	GetUserProfileId(login string) (uint64, error)
 	FindUser(login string) (bool, error)
 	CreateUser(login string, password string, name string, birthDate string, email string) error
 	GetUserProfile(login string) (*models.UserItem, error)
 	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error
 	GetIdsAndPaths() ([]int32, []string, error)
-	CheckUserPassword(login string, password string) (bool, error) 
+	CheckUserPassword(login string, password string) (bool, error)
 }
 
 type RepoPostgre struct {
@@ -109,8 +109,8 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 	return true, nil
 }
 
-func (repo *RepoPostgre) GetUserProfileId(login string) (int64, error) {
-	var userID int64
+func (repo *RepoPostgre) GetUserProfileId(login string) (uint64, error) {
+	var userID uint64
 
 	err := repo.db.QueryRow(
 		"SELECT id FROM profile WHERE login = $1", login).Scan(&userID)

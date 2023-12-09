@@ -80,7 +80,7 @@ func (core *Core) CheckPassword(login string, password string) (bool, error) {
 		core.lg.Error("find user error", "err", err.Error())
 		return false, fmt.Errorf("FindUserAccount err: %w", err)
 	}
-	return  found, nil
+	return found, nil
 }
 
 func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {

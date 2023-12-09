@@ -8,9 +8,8 @@ import (
 	auth "github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/proto"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/repository/comment"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/middleware"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 //go:generate mockgen -source=core.go -destination=../mocks/core_mock.go -package=mocks
@@ -24,12 +23,19 @@ type ICore interface {
 type Core struct {
 	lg       *slog.Logger
 	comments comment.ICommentRepo
+	client   auth.AuthorizationClient
 }
 
 func GetCore(cfg_sql *configs.CommentCfg, lg *slog.Logger, comments comment.ICommentRepo) *Core {
+	client, err := middleware.GetClient(cfg_sql.GrpcPort)
+	if err != nil {
+		lg.Error("get client error", "err", err.Error())
+		return nil
+	}
 	core := Core{
 		lg:       lg.With("module", "core"),
 		comments: comments,
+		client:   client,
 	}
 	return &core
 }
@@ -64,16 +70,9 @@ func (core *Core) AddComment(filmId uint64, userId uint64, rating uint16, text s
 }
 
 func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
-	conn, err := grpc.Dial(":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		core.lg.Error("grpc connect error", "err", err.Error())
-		return 0, fmt.Errorf("grpc connect err: %w", err)
-	}
-	client := auth.NewAuthorizationClient(conn)
-
 	request := auth.FindIdRequest{Sid: sid}
 
-	response, err := client.GetId(ctx, &request)
+	response, err := core.client.GetId(ctx, &request)
 	if err != nil {
 		core.lg.Error("get user id error", "err", err.Error())
 		return 0, fmt.Errorf("get user id err: %w", err)

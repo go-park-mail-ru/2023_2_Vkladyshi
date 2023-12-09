@@ -60,7 +60,7 @@ func (m *FindIdRequest) GetSid() string {
 }
 
 type FindIdResponse struct {
-	Value                int64    `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
+	Value                uint64    `protobuf:"varint,1,opt,name=value,proto3" json:"value,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -91,7 +91,7 @@ func (m *FindIdResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_FindIdResponse proto.InternalMessageInfo
 
-func (m *FindIdResponse) GetValue() int64 {
+func (m *FindIdResponse) GetValue() uint64 {
 	if m != nil {
 		return m.Value
 	}

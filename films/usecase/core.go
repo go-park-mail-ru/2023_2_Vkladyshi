@@ -14,10 +14,9 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/film"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/genre"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/profession"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/middleware"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -51,11 +50,18 @@ type Core struct {
 	crew       crew.ICrewRepo
 	profession profession.IProfessionRepo
 	calendar   calendar.ICalendarRepo
+	client     auth.AuthorizationClient
 }
 
 func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger,
 	films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo, calendar calendar.ICalendarRepo,
 ) *Core {
+	client, err := middleware.GetClient(cfg_sql.GrpcPort)
+	if err != nil {
+		lg.Error("get client error", "err", err.Error())
+		return nil
+	}
+
 	core := Core{
 		lg:         lg.With("module", "core"),
 		films:      films,
@@ -63,6 +69,7 @@ func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger,
 		crew:       actors,
 		profession: professions,
 		calendar:   calendar,
+		client:     client,
 	}
 	return &core
 }
@@ -247,7 +254,7 @@ func (core *Core) FavoriteFilmsRemove(userId uint64, filmId uint64) error {
 }
 
 func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
-	result := &requests.CalendarResponse{}
+	var result *requests.CalendarResponse
 
 	news, err := core.calendar.GetCalendar()
 	if err != nil {
@@ -264,16 +271,9 @@ func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
 }
 
 func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
-	conn, err := grpc.Dial(":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		core.lg.Error("grpc connect error", "err", err.Error())
-		return 0, fmt.Errorf("grpc connect err: %w", err)
-	}
-	client := auth.NewAuthorizationClient(conn)
-
 	request := auth.FindIdRequest{Sid: sid}
 
-	response, err := client.GetId(ctx, &request)
+	response, err := core.client.GetId(ctx, &request)
 	if err != nil {
 		core.lg.Error("get user id error", "err", err.Error())
 		return 0, fmt.Errorf("get user id err: %w", err)
