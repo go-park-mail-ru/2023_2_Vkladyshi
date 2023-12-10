@@ -278,7 +278,7 @@ func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
 		core.lg.Error("get user id error", "err", err.Error())
 		return 0, fmt.Errorf("get user id err: %w", err)
 	}
-	return uint64(response.Value), nil
+	return response.Value, nil
 }
 
 func (core *Core) FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error) {

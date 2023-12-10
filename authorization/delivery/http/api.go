@@ -220,7 +220,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
-	if err == usecase.InvalideEmail {
+	if err == usecase.ErrInvalideEmail {
 		a.lg.Error("create user error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 	}
