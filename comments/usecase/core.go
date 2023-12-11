@@ -52,6 +52,10 @@ func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]
 	}
 
 	namesAndPhotos, err := core.client.GetIdsAndPaths(context.Background(), &auth.NamesAndPathsListRequest{Ids: ids})
+	if err != nil {
+		core.lg.Error("get film comments grpc error", "err", err.Error())
+		return nil, fmt.Errorf("get film comments grpc err: %w", err)
+	}
 	for i := 0; i < len(namesAndPhotos.Names); i++ {
 		comments[i].Username = namesAndPhotos.Names[i]
 		comments[i].Photo = namesAndPhotos.Paths[i]

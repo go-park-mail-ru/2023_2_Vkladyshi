@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -324,6 +325,12 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	birthDate := r.FormValue("birthday")
 	password := r.FormValue("password")
 	photo, handler, err := r.FormFile("photo")
+	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+		a.lg.Error("Post profile error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
 
 	isRepeatPassword, err := a.core.CheckPassword(login, password)
 
