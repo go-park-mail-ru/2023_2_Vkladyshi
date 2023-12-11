@@ -513,8 +513,8 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
-	var filename string
-	filename = "/icons/" + handler.Filename
+
+	filename := "/icons/" + handler.Filename
 	if err != nil && handler != nil && poster != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
