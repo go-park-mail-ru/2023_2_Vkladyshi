@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
@@ -38,6 +39,7 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	mx.HandleFunc("/api/v1/search/actor", api.FindActor)
 	mx.HandleFunc("/api/v1/calendar", api.Calendar)
 	mx.HandleFunc("/api/v1/rating/add", api.AddRating)
+	mx.HandleFunc("/api/v1/add/film", api.AddFilm)
 
 	api.mx = mx
 
@@ -465,6 +467,89 @@ func (a *API) AddRating(w http.ResponseWriter, r *http.Request) {
 	}
 	if found {
 		response.Status = http.StatusNotAcceptable
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	requests.SendResponse(w, response, a.lg)
+}
+
+func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodPost {
+		response.Status = http.StatusMethodNotAllowed
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	err := r.ParseMultipartForm(10 << 20)
+	if err != nil {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	title := r.FormValue("title")
+	info := r.FormValue("info")
+	date := r.FormValue("date")
+	genresString := r.MultipartForm.Value["genre"]
+	genres := make([]uint64, len(genresString))
+	for _, genre := range genresString {
+		genreUint, err := strconv.ParseUint(genre, 10, 64)
+		if err != nil {
+			a.lg.Error("add film error", "err", err.Error())
+			response.Status = http.StatusBadRequest
+			requests.SendResponse(w, response, a.lg)
+			return
+		}
+		genres = append(genres, genreUint)
+	}
+
+	poster, handler, err := r.FormFile("photo")
+	if err != nil && !errors.Is(err, http.ErrMissingFile) {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	var filename string
+	filename = "/icons/" + handler.Filename
+	if err != nil && handler != nil && poster != nil {
+		a.lg.Error("Post profile error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	filePhoto, err := os.OpenFile("/home/ubuntu/frontend-project"+filename, os.O_WRONLY|os.O_CREATE, 0666)
+	if err != nil {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+	defer filePhoto.Close()
+
+	_, err = io.Copy(filePhoto, poster)
+	if err != nil {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	film := models.FilmItem{
+		Title:       title,
+		Info:        info,
+		Poster:      filename,
+		ReleaseDate: date,
+	}
+
+	err = a.core.AddFilm(film, genres)
+	if err != nil {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
 		requests.SendResponse(w, response, a.lg)
 		return
 	}

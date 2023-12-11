@@ -42,6 +42,7 @@ type ICore interface {
 	GetUserId(ctx context.Context, sid string) (uint64, error)
 	FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error)
 	AddRating(filmId uint64, userId uint64, rating uint16) (bool, error)
+	AddFilm(film models.FilmItem, genres []uint64) error
 }
 
 type Core struct {
@@ -312,4 +313,26 @@ func (core *Core) AddRating(filmId uint64, userId uint64, rating uint16) (bool, 
 	}
 
 	return false, nil
+}
+
+func (core *Core) AddFilm(film models.FilmItem, genres []uint64) error {
+	err := core.films.AddFilm(film)
+	if err != nil {
+		core.lg.Error("add film error", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	id, err := core.films.GetFilmId(film.Title)
+	if err != nil {
+		core.lg.Error("get film id", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	err = core.genres.AddFilm(genres, id)
+	if err != nil {
+		core.lg.Error("add films genres error", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	return nil
 }

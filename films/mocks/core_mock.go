@@ -36,6 +36,20 @@ func (m *MockICore) EXPECT() *MockICoreMockRecorder {
 	return m.recorder
 }
 
+// AddFilm mocks base method.
+func (m *MockICore) AddFilm(film models.FilmItem, genres []uint64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddFilm", film, genres)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AddFilm indicates an expected call of AddFilm.
+func (mr *MockICoreMockRecorder) AddFilm(film, genres interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFilm", reflect.TypeOf((*MockICore)(nil).AddFilm), film, genres)
+}
+
 // AddRating mocks base method.
 func (m *MockICore) AddRating(filmId, userId uint64, rating uint16) (bool, error) {
 	m.ctrl.T.Helper()
