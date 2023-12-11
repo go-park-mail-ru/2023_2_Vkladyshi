@@ -41,6 +41,7 @@ type ICore interface {
 	GetCalendar() (*requests.CalendarResponse, error)
 	GetUserId(ctx context.Context, sid string) (uint64, error)
 	FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error)
+	AddRating(filmId uint64, userId uint64, rating uint16) (bool, error)
 }
 
 type Core struct {
@@ -292,4 +293,23 @@ func (core *Core) FindActor(name string, birthDate string, films []string, caree
 	}
 
 	return actors, nil
+}
+
+func (core *Core) AddRating(filmId uint64, userId uint64, rating uint16) (bool, error) {
+	found, err := core.films.HasUsersRating(userId, filmId)
+	if err != nil {
+		core.lg.Error("find users rating error", "err", err.Error())
+		return false, fmt.Errorf("find users rating error: %w", err)
+	}
+	if found {
+		return found, nil
+	}
+
+	err = core.films.AddRating(filmId, userId, rating)
+	if err != nil {
+		core.lg.Error("add rating error", "err", err.Error())
+		return false, fmt.Errorf("add rating err: %w", err)
+	}
+
+	return false, nil
 }
