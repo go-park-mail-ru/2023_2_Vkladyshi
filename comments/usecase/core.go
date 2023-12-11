@@ -46,7 +46,16 @@ func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]
 		core.lg.Error("Get Film Comments error", "err", err.Error())
 		return nil, fmt.Errorf("GetFilmComments err: %w", err)
 	}
+	ids := make([]uint64, len(comments))
+	for i := 0; i < len(ids); i++ {
+		ids = append(ids, comments[i].IdUser)
+	}
 
+	namesAndPhotos, err := core.client.GetIdsAndPaths(context.Background(), &auth.NamesAndPathsListRequest{Ids: ids})
+	for i := 0; i < len(namesAndPhotos.Names); i++ {
+		comments[i].Username = namesAndPhotos.Names[i]
+		comments[i].Photo = namesAndPhotos.Paths[i]
+	}
 	return comments, nil
 }
 

@@ -40,10 +40,8 @@ type Core struct {
 	csrfTokens csrf.CsrfRepo
 }
 
-var (
-	ErrInvalideEmail  = errors.New("invalide email")
-	ErrLostConnection = errors.New("Redis connection lost")
-)
+var InvalideEmail = errors.New("invalide email")
+var LostConnection = errors.New("Redis connection lost")
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -82,7 +80,7 @@ func (core *Core) CheckPassword(login string, password string) (bool, error) {
 		core.lg.Error("find user error", "err", err.Error())
 		return false, fmt.Errorf("FindUserAccount err: %w", err)
 	}
-	return found, nil
+	return  found, nil
 }
 
 func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
@@ -157,7 +155,7 @@ func (core *Core) KillSession(ctx context.Context, sid string) error {
 
 func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
 	if matched, _ := regexp.MatchString(`@`, email); !matched {
-		return ErrInvalideEmail
+		return InvalideEmail
 	}
 	err := core.users.CreateUser(login, password, name, birthDate, email)
 	if err != nil {

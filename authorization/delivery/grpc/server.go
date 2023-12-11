@@ -73,17 +73,17 @@ func (s *server) GetId(ctx context.Context, req *pb.FindIdRequest) (*pb.FindIdRe
 		return nil, err
 	}
 	return &pb.FindIdResponse{
-		Value: id,
+		Value: uint64(id),
 	}, nil
 }
 
-func (s *server) GetIdsAndPaths(ctx context.Context, req *pb.IdsAndPathsListRequest) (*pb.IdsAndPathsResponse, error) {
-	ids, paths, err := s.userRepo.GetIdsAndPaths()
+func (s *server) GetIdsAndPaths(ctx context.Context, req *pb.NamesAndPathsListRequest) (*pb.NamesAndPathsResponse, error) {
+	names, paths, err := s.userRepo.GetNamesAndPaths(req.Ids)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.IdsAndPathsResponse{
-		Ids:   ids,
+	return &pb.NamesAndPathsResponse{
+		Names: names,
 		Paths: paths,
 	}, nil
 }

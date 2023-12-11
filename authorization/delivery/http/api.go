@@ -2,7 +2,6 @@ package delivery
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -220,7 +219,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	err = a.core.CreateUserAccount(request.Login, request.Password, request.Name, request.BirthDate, request.Email)
-	if err == usecase.ErrInvalideEmail {
+	if err == usecase.InvalideEmail {
 		a.lg.Error("create user error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 	}
@@ -325,12 +324,6 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	birthDate := r.FormValue("birthday")
 	password := r.FormValue("password")
 	photo, handler, err := r.FormFile("photo")
-	if err != nil && !errors.Is(err, http.ErrMissingFile) {
-		a.lg.Error("profile error", "err", err.Error())
-		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
 
 	isRepeatPassword, err := a.core.CheckPassword(login, password)
 
