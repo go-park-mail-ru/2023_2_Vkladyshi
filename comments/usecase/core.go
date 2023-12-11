@@ -48,7 +48,7 @@ func (core *Core) GetFilmComments(filmId uint64, first uint64, limit uint64) ([]
 	}
 	ids := make([]uint64, len(comments))
 	for i := 0; i < len(ids); i++ {
-		ids = append(ids, comments[i].IdUser)
+		ids[i] = comments[i].IdUser
 	}
 
 	namesAndPhotos, err := core.client.GetIdsAndPaths(context.Background(), &auth.NamesAndPathsListRequest{Ids: ids})
