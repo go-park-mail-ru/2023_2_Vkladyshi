@@ -35,6 +35,9 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	mx.HandleFunc("/api/v1/favorite/films", api.FavoriteFilms)
 	mx.HandleFunc("/api/v1/favorite/film/add", api.FavoriteFilmsAdd)
 	mx.HandleFunc("/api/v1/favorite/film/remove", api.FavoriteFilmsRemove)
+	mx.HandleFunc("/api/v1/favorite/actors", api.FavoriteActors)
+	mx.HandleFunc("/api/v1/favorite/actor/add", api.FavoriteActorsAdd)
+	mx.HandleFunc("/api/v1/favorite/actor/remove", api.FavoriteActorsRemove)
 	mx.HandleFunc("/api/v1/find", api.FindFilm)
 	mx.HandleFunc("/api/v1/search/actor", api.FindActor)
 	mx.HandleFunc("/api/v1/calendar", api.Calendar)
@@ -264,14 +267,8 @@ func (a *API) FavoriteFilmsRemove(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
+	if errors.Is(err, http.ErrNoCookie) {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	if err != nil {
-		a.lg.Error("favorite films error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
@@ -311,14 +308,8 @@ func (a *API) FavoriteFilms(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
+	if errors.Is(err, http.ErrNoCookie) {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	if err != nil {
-		a.lg.Error("favorite films error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
 		requests.SendResponse(w, response, a.lg)
 		return
 	}
@@ -493,6 +484,8 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 	title := r.FormValue("title")
 	info := r.FormValue("info")
 	date := r.FormValue("date")
+	country := r.FormValue("country")
+
 	genresString := r.MultipartForm.Value["genre"]
 	genres := make([]uint64, len(genresString))
 	for _, genre := range genresString {
@@ -504,6 +497,19 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		genres = append(genres, genreUint)
+	}
+
+	actorsString := r.MultipartForm.Value["actors"]
+	actors := make([]uint64, len(actorsString))
+	for _, actor := range genresString {
+		actorUint, err := strconv.ParseUint(actor, 10, 64)
+		if err != nil {
+			a.lg.Error("add film error", "err", err.Error())
+			response.Status = http.StatusBadRequest
+			requests.SendResponse(w, response, a.lg)
+			return
+		}
+		actors = append(actors, actorUint)
 	}
 
 	poster, handler, err := r.FormFile("photo")
@@ -544,9 +550,10 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 		Info:        info,
 		Poster:      filename,
 		ReleaseDate: date,
+		Country:     country,
 	}
 
-	err = a.core.AddFilm(film, genres)
+	err = a.core.AddFilm(film, genres, actors)
 	if err != nil {
 		a.lg.Error("add film error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
@@ -554,5 +561,139 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	requests.SendResponse(w, response, a.lg)
+}
+
+func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	session, err := r.Cookie("session_id")
+	if errors.Is(err, http.ErrNoCookie) {
+		response.Status = http.StatusUnauthorized
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	userId, err := a.core.GetUserId(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("favorite actors error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	actorId, err := strconv.ParseUint(r.URL.Query().Get("actor_id"), 10, 64)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	err = a.core.FavoriteActorsAdd(userId, actorId)
+	if err != nil {
+		if errors.Is(err, usecase.ErrFoundFavorite) {
+			response.Status = http.StatusNotAcceptable
+			requests.SendResponse(w, response, a.lg)
+			return
+		}
+		a.lg.Error("favorite actors error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	requests.SendResponse(w, response, a.lg)
+}
+
+func (a *API) FavoriteActorsRemove(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	session, err := r.Cookie("session_id")
+	if errors.Is(err, http.ErrNoCookie) {
+		response.Status = http.StatusUnauthorized
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	userId, err := a.core.GetUserId(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("favorite actors error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	actorId, err := strconv.ParseUint(r.URL.Query().Get("actor_id"), 10, 64)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	err = a.core.FavoriteActorsRemove(userId, actorId)
+	if err != nil {
+		a.lg.Error("favorite actors error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	requests.SendResponse(w, response, a.lg)
+}
+
+func (a *API) FavoriteActors(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	session, err := r.Cookie("session_id")
+	if errors.Is(err, http.ErrNoCookie) {
+		response.Status = http.StatusUnauthorized
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	userId, err := a.core.GetUserId(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("favorite actors error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
+	if err != nil {
+		page = 1
+	}
+	pageSize, err := strconv.ParseUint(r.URL.Query().Get("per_page"), 10, 64)
+	if err != nil {
+		pageSize = 8
+	}
+
+	actors, err := a.core.FavoriteActors(userId, uint64((page-1)*pageSize), pageSize)
+	if err != nil {
+		a.lg.Error("favorite actors error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
+
+	actorsResponse := requests.ActorsResponse{
+		Actors: actors,
+	}
+	response.Body = actorsResponse
 	requests.SendResponse(w, response, a.lg)
 }

@@ -42,7 +42,10 @@ type ICore interface {
 	GetUserId(ctx context.Context, sid string) (uint64, error)
 	FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error)
 	AddRating(filmId uint64, userId uint64, rating uint16) (bool, error)
-	AddFilm(film models.FilmItem, genres []uint64) error
+	AddFilm(film models.FilmItem, genres []uint64, actors []uint64) error
+	FavoriteActors(userId uint64, start uint64, end uint64) ([]models.Character, error)
+	FavoriteActorsAdd(userId uint64, filmId uint64) error
+	FavoriteActorsRemove(userId uint64, filmId uint64) error
 }
 
 type Core struct {
@@ -315,7 +318,7 @@ func (core *Core) AddRating(filmId uint64, userId uint64, rating uint16) (bool, 
 	return false, nil
 }
 
-func (core *Core) AddFilm(film models.FilmItem, genres []uint64) error {
+func (core *Core) AddFilm(film models.FilmItem, genres []uint64, actors []uint64) error {
 	err := core.films.AddFilm(film)
 	if err != nil {
 		core.lg.Error("add film error", "err", err.Error())
@@ -332,6 +335,51 @@ func (core *Core) AddFilm(film models.FilmItem, genres []uint64) error {
 	if err != nil {
 		core.lg.Error("add films genres error", "err", err.Error())
 		return fmt.Errorf("add film err: %w", err)
+	}
+
+	err = core.crew.AddFilm(actors, id)
+	if err != nil {
+		core.lg.Error("add films actors error", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	return nil
+}
+
+func (core *Core) FavoriteActors(userId uint64, start uint64, end uint64) ([]models.Character, error) {
+	actors, err := core.crew.GetFavoriteActors(userId, start, end)
+	if err != nil {
+		core.lg.Error("favorite actors error", "err", err.Error())
+		return nil, fmt.Errorf("favorite actors err: %w", err)
+	}
+
+	return actors, nil
+}
+
+func (core *Core) FavoriteActorsAdd(userId uint64, actorId uint64) error {
+	found, err := core.crew.CheckActor(userId, actorId)
+	if err != nil {
+		core.lg.Error("favorite actors add error", "err", err.Error())
+		return fmt.Errorf("favorite actors add err: %w", err)
+	}
+	if found {
+		return ErrFoundFavorite
+	}
+
+	err = core.crew.AddFavoriteActor(userId, actorId)
+	if err != nil {
+		core.lg.Error("favorite actors add error", "err", err.Error())
+		return fmt.Errorf("favorite actors add err: %w", err)
+	}
+
+	return nil
+}
+
+func (core *Core) FavoriteActorsRemove(userId uint64, actorId uint64) error {
+	err := core.crew.RemoveFavoriteActor(userId, actorId)
+	if err != nil {
+		core.lg.Error("favorite actors remove error", "err", err.Error())
+		return fmt.Errorf("favorite actors remove err: %w", err)
 	}
 
 	return nil
