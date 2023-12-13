@@ -504,6 +504,12 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	genreUint, err := strconv.ParseUint(genresString[prev:], 10, 64)
+	if err != nil {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
 	genres = append(genres, genreUint)
 	prev = 0
 
@@ -523,6 +529,12 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	actorUint, err := strconv.ParseUint(actorsString[prev:], 10, 64)
+	if err != nil {
+		a.lg.Error("add film error", "err", err.Error())
+		response.Status = http.StatusBadRequest
+		requests.SendResponse(w, response, a.lg)
+		return
+	}
 	actors = append(actors, actorUint)
 
 	fmt.Println(actors, genres)
