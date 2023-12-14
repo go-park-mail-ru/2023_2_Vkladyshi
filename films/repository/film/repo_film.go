@@ -348,7 +348,7 @@ func (repo *RepoPostgre) HasUsersRating(userId uint64, filmId uint64) (bool, err
 }
 
 func (repo *RepoPostgre) AddFilm(film models.FilmItem) error {
-	_, err := repo.db.Exec("INSERT INO film(title, info, poster, release_date, country, mpaa) "+
+	_, err := repo.db.Exec("INSERT INTO film(title, info, poster, release_date, country, mpaa) "+
 		"VALUES($1, $2, $3, $4, $5, $6)",
 		film.Title, film.Info, film.Poster, film.ReleaseDate, film.Country, film.Mpaa)
 	if err != nil {
