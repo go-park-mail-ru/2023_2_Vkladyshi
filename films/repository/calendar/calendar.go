@@ -60,8 +60,7 @@ func (repo *RepoPostgre) GetCalendar() ([]models.DayItem, error) {
 	lastAppendDay := uint8(0)
 	news := ""
 
-	rows, err := repo.db.Query("SELECT calendar.id, title, release_day, film.poster FROM calendar " +
-		"JOIN film ON film.id = calendar.id " +
+	rows, err := repo.db.Query("SELECT title, release_day FROM calendar " +
 		"WHERE release_month = DATE_PART('MONTH', CURRENT_DATE) " +
 		"ORDER BY release_day")
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -72,7 +71,7 @@ func (repo *RepoPostgre) GetCalendar() ([]models.DayItem, error) {
 	post1 := models.DayItem{}
 	for rows.Next() {
 		post2 := models.DayItem{}
-		err := rows.Scan(&post2.IdFilm, &post2.DayNews, &post2.DayNumber, &post2.Poster)
+		err := rows.Scan(&post2.DayNews, &post2.DayNumber)
 		if err != nil {
 			return nil, fmt.Errorf("get calendar scan err: %w", err)
 		}
@@ -86,7 +85,7 @@ func (repo *RepoPostgre) GetCalendar() ([]models.DayItem, error) {
 			news += post1.DayNews
 			lastAppendDay = post1.DayNumber
 
-			calendar = append(calendar, models.DayItem{IdFilm: post1.IdFilm, DayNumber: lastAppendDay, DayNews: news, Poster: post1.Poster})
+			calendar = append(calendar, models.DayItem{DayNumber: lastAppendDay, DayNews: news})
 			news = ""
 		} else {
 			news += post1.DayNews + " "
@@ -94,7 +93,7 @@ func (repo *RepoPostgre) GetCalendar() ([]models.DayItem, error) {
 		post1 = post2
 	}
 	if lastAppendDay != post1.DayNumber {
-		calendar = append(calendar, models.DayItem{IdFilm: post1.IdFilm, DayNumber: post1.DayNumber, DayNews: news + post1.DayNews, Poster: post1.Poster})
+		calendar = append(calendar, models.DayItem{DayNumber: post1.DayNumber, DayNews: news + post1.DayNews})
 	}
 
 	return calendar, nil

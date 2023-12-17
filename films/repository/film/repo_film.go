@@ -169,7 +169,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	s.WriteString(
 		"SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film " +
 			"JOIN films_genre ON film.id = films_genre.id_film " +
-			"LEFT JOIN users_comment ON film.id = users_comment.id_film " +
+			"JOIN users_comment ON film.id = users_comment.id_film " +
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
 			"JOIN crew ON person_in_film.id_person = crew.id ")
 	if title != "" {
@@ -353,12 +353,6 @@ func (repo *RepoPostgre) AddFilm(film models.FilmItem) error {
 		film.Title, film.Info, film.Poster, film.ReleaseDate, film.Country, film.Mpaa)
 	if err != nil {
 		return fmt.Errorf("add film error: %w", err)
-	}
-
-	_, err = repo.db.Exec("UPDATE film SET fts = setweight(to_tsvector(title), 'A') || " +
-		"setweight(to_tsvector(info), 'B')WHERE fts IS NULL;")
-	if err != nil {
-		return fmt.Errorf("update fts error: %w", err)
 	}
 
 	return nil

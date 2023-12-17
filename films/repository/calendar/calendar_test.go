@@ -17,17 +17,17 @@ func TestGetCalendar(t *testing.T) {
 	}
 	defer db.Close()
 
-	rows := sqlmock.NewRows([]string{"Id", "Title", "RealeseDay", "Poster"})
+	rows := sqlmock.NewRows([]string{"Title", "RealeseDay"})
 
 	expect := []models.DayItem{
-		{DayNews: "n1", DayNumber: 1, IdFilm: 2, Poster: "p"},
+		{DayNews: "n1", DayNumber: 1},
 	}
 
 	for _, item := range expect {
-		rows = rows.AddRow(item.IdFilm, item.DayNews, item.DayNumber, item.Poster)
+		rows = rows.AddRow(item.DayNews, item.DayNumber)
 	}
 
-	selectRow := "SELECT calendar.id, title, release_day, film.poster FROM calendar JOIN film ON film.id = calendar.id WHERE release_month = DATE_PART('MONTH', CURRENT_DATE) ORDER BY release_day"
+	selectRow := "SELECT title, release_day FROM calendar WHERE release_month = DATE_PART('MONTH', CURRENT_DATE) ORDER BY release_day"
 
 	mock.ExpectQuery(
 		regexp.QuoteMeta(selectRow)).

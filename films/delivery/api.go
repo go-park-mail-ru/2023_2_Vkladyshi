@@ -50,16 +50,16 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	api.mx.Handle("/api/v1/films", api.mw.GetResponse(http.HandlerFunc(api.Films), l))
 	api.mx.Handle("/api/v1/film", api.mw.GetResponse(http.HandlerFunc(api.Film), l))
 	api.mx.Handle("/api/v1/actor", api.mw.GetResponse(http.HandlerFunc(api.Actor), l))
-	api.mx.Handle("/api/v1/favorite/films", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteFilms), c, l))               //5
-	api.mx.Handle("/api/v1/favorite/film/add", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteFilmsAdd), c, l))         //1
-	api.mx.Handle("/api/v1/favorite/film/remove", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteFilmsRemove), c, l))   //2
-	api.mx.Handle("/api/v1/favorite/actors", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteActors), c, l))             //3
-	api.mx.Handle("/api/v1/favorite/actor/add", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteActorsAdd), c, l))       //4
-	api.mx.Handle("/api/v1/favorite/actor/remove", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteActorsRemove), c, l)) //6
+	api.mx.Handle("/api/v1/favorite/films", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteFilms), c, l))
+	api.mx.Handle("/api/v1/favorite/film/add", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteFilmsAdd), c, l))
+	api.mx.Handle("/api/v1/favorite/film/remove", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteFilmsRemove), c, l))
+	api.mx.Handle("/api/v1/favorite/actors", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteActors), c, l))
+	api.mx.Handle("/api/v1/favorite/actor/add", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteActorsAdd), c, l))
+	api.mx.Handle("/api/v1/favorite/actor/remove", api.mw.AuthCheck(http.HandlerFunc(api.FavoriteActorsRemove), c, l))
 	api.mx.Handle("/api/v1/find", api.mw.GetResponse(http.HandlerFunc(api.FindFilm), l))
 	api.mx.Handle("/api/v1/search/actor", api.mw.GetResponse(http.HandlerFunc(api.FindActor), l))
 	api.mx.Handle("/api/v1/calendar", api.mw.GetResponse(http.HandlerFunc(api.Calendar), l))
-	api.mx.Handle("/api/v1/rating/add", api.mw.AuthCheck(http.HandlerFunc(api.AddRating), c, l)) // 7
+	api.mx.Handle("/api/v1/rating/add", api.mw.AuthCheck(http.HandlerFunc(api.AddRating), c, l))
 	api.mx.Handle("/api/v1/add/film", api.mw.GetResponse(http.HandlerFunc(api.AddFilm), l))
 
 	return api
@@ -111,6 +111,7 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		Films:          films,
 	}
 	a.mw.Response.Body = filmsResponse
+
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
