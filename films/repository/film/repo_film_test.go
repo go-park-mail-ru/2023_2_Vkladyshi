@@ -259,7 +259,7 @@ func TestFindFilm(t *testing.T) {
 		rows = rows.AddRow(item.Title, item.Id, item.Poster, expectRating[0])
 	}
 
-	selectStr := "SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film JOIN films_genre ON film.id = films_genre.id_film JOIN users_comment ON film.id = users_comment.id_film JOIN person_in_film ON film.id = person_in_film.id_film JOIN crew ON person_in_film.id_person = crew.id GROUP BY film.title, film.id HAVING AVG(users_comment.rating) >= $1 AND AVG(users_comment.rating) <= $2 ORDER BY film.title"
+	selectStr := "SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film JOIN films_genre ON film.id = films_genre.id_film LEFT JOIN users_comment ON film.id = users_comment.id_film JOIN person_in_film ON film.id = person_in_film.id_film JOIN crew ON person_in_film.id_person = crew.id GROUP BY film.title, film.id HAVING AVG(users_comment.rating) >= $1 AND AVG(users_comment.rating) <= $2 ORDER BY film.title"
 	mock.ExpectQuery(
 		regexp.QuoteMeta(selectStr)).
 		WithArgs(float32(0), float32(10)).

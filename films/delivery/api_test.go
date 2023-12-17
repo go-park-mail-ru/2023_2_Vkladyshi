@@ -14,6 +14,8 @@ import (
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/mocks"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/middleware"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/golang/mock/gomock"
@@ -92,13 +94,21 @@ func TestFilms(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
+	resp := &requests.Response{
+		Status: http.StatusOK,
+		Body:   nil,
+	}
+	mw := &middleware.ResponseMiddleware{
+		Response: resp,
+		Metrix:   metrics.GetMetrics(),
+	}
 	mockCore := mocks.NewMockICore(mockCtrl)
 	mockCore.EXPECT().GetFilmsAndGenreTitle(uint64(0), uint64(0), uint64(8)).Return(nil, "", fmt.Errorf("core_err")).Times(1)
 	mockCore.EXPECT().GetFilmsAndGenreTitle(uint64(1), uint64(0), uint64(8)).Return(expectedFilms, expectedGenre, nil).Times(1)
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger}
+	api := API{core: mockCore, lg: logger, mw: mw}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/films", nil)
@@ -112,6 +122,7 @@ func TestFilms(t *testing.T) {
 		api.Films(w, r)
 		response, err := getResponse(w)
 		if err != nil {
+			fmt.Println("AAAAAA", response, w)
 			t.Errorf("unexpected error: %s", err)
 			return
 		}

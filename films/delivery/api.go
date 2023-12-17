@@ -111,7 +111,6 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		Films:          films,
 	}
 	a.mw.Response.Body = filmsResponse
-
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
