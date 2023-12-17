@@ -26,6 +26,16 @@ func createBody(req requests.CommentRequest) io.Reader {
 	return body
 }
 
+var resp requests.Response = requests.Response{
+	Status: http.StatusOK,
+	Body:   nil,
+}
+
+var md middleware.ResponseMiddleware = middleware.ResponseMiddleware{
+	Response: &resp,
+	Metrix:   metrics.GetMetrics(),
+}
+
 func TestComment(t *testing.T) {
 	testCases := map[string]struct {
 		method string
@@ -57,17 +67,7 @@ func TestComment(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	resp := &requests.Response{
-		Status: http.StatusOK,
-		Body:   nil,
-	}
-
-	middleware := &middleware.ResponseMiddleware{
-		Response: resp,
-		Metrix:   metrics.GetMetrics(),
-	}
-
-	api := API{core: mockCore, mw: middleware, lg: logger}
+	api := API{core: mockCore, mw: &md, lg: logger}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/comment", nil)
@@ -160,17 +160,7 @@ func TestCommentAdd(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	resp := &requests.Response{
-		Status: http.StatusOK,
-		Body:   nil,
-	}
-
-	middleware := &middleware.ResponseMiddleware{
-		Response: resp,
-		Metrix:   metrics.GetMetrics(),
-	}
-
-	api := API{core: mockCore, mw: middleware, lg: logger}
+	api := API{core: mockCore, mw: &md, lg: logger}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/comment/add", curr.body)
