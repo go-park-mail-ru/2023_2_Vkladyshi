@@ -323,7 +323,7 @@ func (repo *RepoPostgre) CheckFilm(userId uint64, filmId uint64) (bool, error) {
 func (repo *RepoPostgre) AddRating(filmId uint64, userId uint64, rating uint16) error {
 	_, err := repo.db.Exec(
 		"INSERT INTO users_comment(id_film, rating, id_user) "+
-			"VALUES($1, $2, $3, $4)", filmId, rating, userId)
+			"VALUES($1, $2, $3)", filmId, rating, userId)
 	if err != nil {
 		return fmt.Errorf("AddComment: %w", err)
 	}

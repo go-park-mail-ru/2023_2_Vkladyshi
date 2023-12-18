@@ -111,7 +111,6 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 		Films:          films,
 	}
 	a.mw.Response.Body = filmsResponse
-
 }
 
 func (a *API) Film(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +207,6 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 		Total: uint64(len((films))),
 	}
 	a.mw.Response.Body = filmsResponse
-
 }
 
 func (a *API) FavoriteFilmsAdd(w http.ResponseWriter, r *http.Request) {
@@ -260,7 +258,6 @@ func (a *API) FavoriteFilmsRemove(w http.ResponseWriter, r *http.Request) {
 		a.mw.Response.Status = http.StatusInternalServerError
 		return
 	}
-
 }
 
 func (a *API) FavoriteFilms(w http.ResponseWriter, r *http.Request) {
@@ -345,7 +342,6 @@ func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
 		Actors: actors,
 	}
 	a.mw.Response.Body = actorsResponse
-
 }
 
 func (a *API) AddRating(w http.ResponseWriter, r *http.Request) {
@@ -379,7 +375,6 @@ func (a *API) AddRating(w http.ResponseWriter, r *http.Request) {
 		a.mw.Response.Status = http.StatusNotAcceptable
 		return
 	}
-
 }
 
 func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
@@ -491,7 +486,6 @@ func (a *API) AddFilm(w http.ResponseWriter, r *http.Request) {
 		a.mw.Response.Status = http.StatusInternalServerError
 		return
 	}
-
 }
 
 func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {
@@ -519,7 +513,6 @@ func (a *API) FavoriteActorsAdd(w http.ResponseWriter, r *http.Request) {
 		a.mw.Response.Status = http.StatusInternalServerError
 		return
 	}
-
 }
 
 func (a *API) FavoriteActorsRemove(w http.ResponseWriter, r *http.Request) {
@@ -543,7 +536,6 @@ func (a *API) FavoriteActorsRemove(w http.ResponseWriter, r *http.Request) {
 		a.mw.Response.Status = http.StatusInternalServerError
 		return
 	}
-
 }
 
 func (a *API) FavoriteActors(w http.ResponseWriter, r *http.Request) {

@@ -87,7 +87,6 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 	commentsResponse := requests.CommentResponse{Comments: comments}
 
 	a.mw.Response.Body = commentsResponse
-
 }
 
 func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
@@ -137,5 +136,4 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		a.mw.Response.Status = http.StatusNotAcceptable
 		return
 	}
-
 }

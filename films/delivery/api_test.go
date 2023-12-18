@@ -2,6 +2,7 @@ package delivery
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,6 +29,13 @@ func createBody(req requests.FindFilmRequest) io.Reader {
 }
 
 func createActorBody(req requests.FindActorRequest) io.Reader {
+	jsonReq, _ := json.Marshal(req)
+
+	body := bytes.NewBuffer(jsonReq)
+	return body
+}
+
+func createRatingBody(req requests.CommentRequest) io.Reader {
 	jsonReq, _ := json.Marshal(req)
 
 	body := bytes.NewBuffer(jsonReq)
@@ -436,6 +444,444 @@ func TestCalendar(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		api.Calendar(w, r)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestFavoriteFilmsAdd(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		params map[string]string
+		result *requests.Response
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"bad request error": {
+			method: http.MethodGet,
+			params: map[string]string{},
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+		},
+		"Core error": {
+			method: http.MethodGet,
+			params: map[string]string{"film_id": "1"},
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		"found error": {
+			method: http.MethodGet,
+			params: map[string]string{"film_id": "2"},
+			result: &requests.Response{Status: http.StatusNotAcceptable, Body: nil},
+		},
+		"Ok": {
+			method: http.MethodGet,
+			params: map[string]string{"film_id": "3"},
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().FavoriteFilmsAdd(uint64(1), uint64(1)).Return(fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FavoriteFilmsAdd(uint64(1), uint64(2)).Return(usecase.ErrFoundFavorite).Times(1)
+	mockCore.EXPECT().FavoriteFilmsAdd(uint64(1), uint64(3)).Return(nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/favorite/film/add", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+		q := r.URL.Query()
+		for key, value := range curr.params {
+			q.Add(key, value)
+		}
+		newReq.URL.RawQuery = q.Encode()
+		w := httptest.NewRecorder()
+
+		api.FavoriteFilmsAdd(w, newReq)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestFavoriteFilmsRemove(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		params map[string]string
+		result *requests.Response
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"bad request error": {
+			method: http.MethodGet,
+			params: map[string]string{},
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+		},
+		"Core error": {
+			method: http.MethodGet,
+			params: map[string]string{"film_id": "1"},
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		"Ok": {
+			method: http.MethodGet,
+			params: map[string]string{"film_id": "3"},
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().FavoriteFilmsRemove(uint64(1), uint64(1)).Return(fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FavoriteFilmsRemove(uint64(1), uint64(3)).Return(nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/favorite/film/remove", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+		q := r.URL.Query()
+		for key, value := range curr.params {
+			q.Add(key, value)
+		}
+		newReq.URL.RawQuery = q.Encode()
+		w := httptest.NewRecorder()
+
+		api.FavoriteFilmsRemove(w, newReq)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestFavoriteFilms(t *testing.T) {
+	filmItem := models.FilmItem{Title: "t"}
+	films := []models.FilmItem{filmItem}
+
+	testCases := map[string]struct {
+		method string
+		params map[string]string
+		result *requests.Response
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"Core error": {
+			method: http.MethodGet,
+			params: map[string]string{"page": "2", "page_size": "8"},
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		"Ok": {
+			method: http.MethodGet,
+			params: map[string]string{"page": "1", "page_size": "8"},
+			result: &requests.Response{Status: http.StatusOK, Body: films},
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().FavoriteFilms(uint64(1), uint64(8), uint64(8)).Return(nil, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FavoriteFilms(uint64(1), uint64(0), uint64(8)).Return(films, nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/favorite/films", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+		q := r.URL.Query()
+		for key, value := range curr.params {
+			q.Add(key, value)
+		}
+		newReq.URL.RawQuery = q.Encode()
+		w := httptest.NewRecorder()
+
+		api.FavoriteFilms(w, newReq)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestFavoriteActorsAdd(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		params map[string]string
+		result *requests.Response
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"bad request error": {
+			method: http.MethodGet,
+			params: map[string]string{},
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+		},
+		"Core error": {
+			method: http.MethodGet,
+			params: map[string]string{"actor_id": "1"},
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		"found error": {
+			method: http.MethodGet,
+			params: map[string]string{"actor_id": "2"},
+			result: &requests.Response{Status: http.StatusNotAcceptable, Body: nil},
+		},
+		"Ok": {
+			method: http.MethodGet,
+			params: map[string]string{"actor_id": "3"},
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().FavoriteActorsAdd(uint64(1), uint64(1)).Return(fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FavoriteActorsAdd(uint64(1), uint64(2)).Return(usecase.ErrFoundFavorite).Times(1)
+	mockCore.EXPECT().FavoriteActorsAdd(uint64(1), uint64(3)).Return(nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/favorite/actor/add", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+		q := r.URL.Query()
+		for key, value := range curr.params {
+			q.Add(key, value)
+		}
+		newReq.URL.RawQuery = q.Encode()
+		w := httptest.NewRecorder()
+
+		api.FavoriteActorsAdd(w, newReq)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestFavoriteActorsRemove(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		params map[string]string
+		result *requests.Response
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"bad request error": {
+			method: http.MethodGet,
+			params: map[string]string{},
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+		},
+		"Core error": {
+			method: http.MethodGet,
+			params: map[string]string{"actor_id": "1"},
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		"Ok": {
+			method: http.MethodGet,
+			params: map[string]string{"actor_id": "3"},
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().FavoriteActorsRemove(uint64(1), uint64(1)).Return(fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FavoriteActorsRemove(uint64(1), uint64(3)).Return(nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/favorite/actor/remove", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+		q := r.URL.Query()
+		for key, value := range curr.params {
+			q.Add(key, value)
+		}
+		newReq.URL.RawQuery = q.Encode()
+		w := httptest.NewRecorder()
+
+		api.FavoriteActorsRemove(w, newReq)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestFavoriteActors(t *testing.T) {
+	actorItem := models.Character{NameActor: "n"}
+	actors := []models.Character{actorItem}
+	response := requests.ActorsResponse{Actors: actors}
+
+	testCases := map[string]struct {
+		method string
+		params map[string]string
+		result *requests.Response
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"Core error": {
+			method: http.MethodGet,
+			params: map[string]string{"page": "2", "page_size": "8"},
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		"Ok": {
+			method: http.MethodGet,
+			params: map[string]string{"page": "1", "page_size": "8"},
+			result: &requests.Response{Status: http.StatusOK, Body: response},
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().FavoriteActors(uint64(1), uint64(8), uint64(8)).Return(nil, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FavoriteActors(uint64(1), uint64(0), uint64(8)).Return(actors, nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/favorite/actors", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+		q := r.URL.Query()
+		for key, value := range curr.params {
+			q.Add(key, value)
+		}
+		newReq.URL.RawQuery = q.Encode()
+		w := httptest.NewRecorder()
+
+		api.FavoriteActors(w, newReq)
+
+		if api.mw.Response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(api.mw.Response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, api.mw.Response.Body)
+			return
+		}
+	}
+}
+
+func TestAddRating(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		result *requests.Response
+		body   io.Reader
+	}{
+		"Bad method": {
+			method: http.MethodGet,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"no body error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+			body:   nil,
+		},
+		"Core error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+			body:   createRatingBody(requests.CommentRequest{FilmId: 1}),
+		},
+		"found error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusNotAcceptable, Body: nil},
+			body:   createRatingBody(requests.CommentRequest{FilmId: 2}),
+		},
+		"Ok": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+			body:   createRatingBody(requests.CommentRequest{FilmId: 3}),
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().AddRating(uint64(1), uint64(1), uint16(0)).Return(false, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().AddRating(uint64(2), uint64(1), uint16(0)).Return(true, nil).Times(1)
+	mockCore.EXPECT().AddRating(uint64(3), uint64(1), uint16(0)).Return(false, nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, mw: &md, lg: logger}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/rating/add", curr.body)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+
+		w := httptest.NewRecorder()
+
+		api.AddRating(w, newReq)
 
 		if api.mw.Response.Status != curr.result.Status {
 			t.Errorf("unexpected status: %d, want %d", api.mw.Response.Status, curr.result.Status)
