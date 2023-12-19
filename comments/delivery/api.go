@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
+	"github.com/mailru/easyjson"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -125,7 +125,7 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.Unmarshal(body, &commentRequest); err != nil {
+	if err = easyjson.Unmarshal(body, &commentRequest); err != nil {
 		response.Status = http.StatusBadRequest
 		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
 		return

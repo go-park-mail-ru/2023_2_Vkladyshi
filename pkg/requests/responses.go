@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -9,67 +8,71 @@ import (
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
+	easyjson "github.com/mailru/easyjson"
 )
 
-type Response struct {
-	Status int `json:"status"`
-	Body   any `json:"body"`
-}
+//easyjson:json
+type (
+	Response struct {
+		Status int `json:"status"`
+		Body   any `json:"body"`
+	}
 
-type FilmsResponse struct {
-	Page           uint64            `json:"current_page"`
-	PageSize       uint64            `json:"page_size"`
-	CollectionName string            `json:"collection_name"`
-	Total          uint64            `json:"total"`
-	Films          []models.FilmItem `json:"films"`
-}
+	FilmsResponse struct {
+		Page           uint64            `json:"current_page"`
+		PageSize       uint64            `json:"page_size"`
+		CollectionName string            `json:"collection_name"`
+		Total          uint64            `json:"total"`
+		Films          []models.FilmItem `json:"films"`
+	}
 
-type FilmResponse struct {
-	Film       models.FilmItem    `json:"film"`
-	Genres     []models.GenreItem `json:"genre"`
-	Rating     float64            `json:"rating"`
-	Number     uint64             `json:"number"`
-	Directors  []models.CrewItem  `json:"directors"`
-	Scenarists []models.CrewItem  `json:"scenarists"`
-	Characters []models.Character `json:"actors"`
-}
+	FilmResponse struct {
+		Film       models.FilmItem    `json:"film"`
+		Genres     []models.GenreItem `json:"genre"`
+		Rating     float64            `json:"rating"`
+		Number     uint64             `json:"number"`
+		Directors  []models.CrewItem  `json:"directors"`
+		Scenarists []models.CrewItem  `json:"scenarists"`
+		Characters []models.Character `json:"actors"`
+	}
 
-type ActorResponse struct {
-	Name      string                  `json:"name"`
-	Photo     string                  `json:"poster_href"`
-	Career    []models.ProfessionItem `json:"career"`
-	BirthDate string                  `json:"birthday"`
-	Country   string                  `json:"country"`
-	Info      string                  `json:"info_text"`
-}
+	ActorResponse struct {
+		Name      string                  `json:"name"`
+		Photo     string                  `json:"poster_href"`
+		Career    []models.ProfessionItem `json:"career"`
+		BirthDate string                  `json:"birthday"`
+		Country   string                  `json:"country"`
+		Info      string                  `json:"info_text"`
+	}
 
-type ActorsResponse struct {
-	Actors []models.Character `json:"actors"`
-}
+	ActorsResponse struct {
+		Actors []models.Character `json:"actors"`
+	}
 
-type CommentResponse struct {
-	Comments []models.CommentItem `json:"comment"`
-}
+	CommentResponse struct {
+		Comments []models.CommentItem `json:"comment"`
+	}
 
-type ProfileResponse struct {
-	Email     string `json:"email"`
-	Name      string `json:"name"`
-	Login     string `json:"login"`
-	Photo     string `json:"photo"`
-	BirthDate string `json:"birthday"`
-}
+	ProfileResponse struct {
+		Email     string `json:"email"`
+		Name      string `json:"name"`
+		Login     string `json:"login"`
+		Photo     string `json:"photo"`
+		BirthDate string `json:"birthday"`
+	}
 
-type AuthCheckResponse struct {
-	Login string `json:"login"`
-	Role  string `json:"role"`
-}
+	AuthCheckResponse struct {
+		Login string `json:"login"`
+		Role  string `json:"role"`
+	}
 
-type CalendarResponse struct {
-	MonthName  string           `json:"monthName"`
-	MonthText  string           `json:"monthText"`
-	CurrentDay uint8            `json:"currentDay"`
-	Days       []models.DayItem `json:"days"`
-}
+	CalendarResponse struct {
+		MonthName  string           `json:"monthName"`
+		MonthText  string           `json:"monthText"`
+		CurrentDay uint8            `json:"currentDay"`
+		Days       []models.DayItem `json:"days"`
+	}
+)
 
 func sendMetrics(mt *metrics.Metrics, path string, status int, start time.Time) {
 	end := time.Since(start)
@@ -78,7 +81,7 @@ func sendMetrics(mt *metrics.Metrics, path string, status int, start time.Time) 
 }
 
 func SendResponse(w http.ResponseWriter, path string, response Response, lg *slog.Logger, mt *metrics.Metrics, start time.Time) {
-	jsonResponse, err := json.Marshal(response)
+	jsonResponse, err := easyjson.Marshal(response)
 	sendMetrics(mt, path, response.Status, start)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

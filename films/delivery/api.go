@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/middleware"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
+	"github.com/mailru/easyjson"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -197,7 +197,7 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.Unmarshal(body, &request); err != nil {
+	if err = easyjson.Unmarshal(body, &request); err != nil {
 		a.lg.Error("find film error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
@@ -364,7 +364,7 @@ func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.Unmarshal(body, &request); err != nil {
+	if err = easyjson.Unmarshal(body, &request); err != nil {
 		a.lg.Error("find actor error", "err", err.Error())
 		response.Status = http.StatusBadRequest
 		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
@@ -413,7 +413,7 @@ func (a *API) AddRating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.Unmarshal(body, &commentRequest); err != nil {
+	if err = easyjson.Unmarshal(body, &commentRequest); err != nil {
 		response.Status = http.StatusBadRequest
 		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
 		return

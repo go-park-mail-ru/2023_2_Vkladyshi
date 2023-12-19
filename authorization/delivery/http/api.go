@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -13,6 +12,7 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/usecase"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
+	"github.com/mailru/easyjson"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -156,7 +156,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = json.Unmarshal(body, &request); err != nil {
+	if err = easyjson.Unmarshal(body, &request); err != nil {
 		response.Status = http.StatusBadRequest
 		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
 		return
@@ -217,7 +217,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.Unmarshal(body, &request)
+	err = easyjson.Unmarshal(body, &request)
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest

@@ -3,7 +3,6 @@ package delivery
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -18,24 +17,25 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/golang/mock/gomock"
+	"github.com/mailru/easyjson"
 )
 
 func createBody(req requests.FindFilmRequest) io.Reader {
-	jsonReq, _ := json.Marshal(req)
+	jsonReq, _ := easyjson.Marshal(req)
 
 	body := bytes.NewBuffer(jsonReq)
 	return body
 }
 
 func createActorBody(req requests.FindActorRequest) io.Reader {
-	jsonReq, _ := json.Marshal(req)
+	jsonReq, _ := easyjson.Marshal(req)
 
 	body := bytes.NewBuffer(jsonReq)
 	return body
 }
 
 func createRatingBody(req requests.CommentRequest) io.Reader {
-	jsonReq, _ := json.Marshal(req)
+	jsonReq, _ := easyjson.Marshal(req)
 
 	body := bytes.NewBuffer(jsonReq)
 	return body
