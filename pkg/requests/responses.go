@@ -74,21 +74,31 @@ type (
 	}
 )
 
+type Collector struct {
+	mt *metrics.Metrics
+}
+
+func GetCollector() *Collector {
+	return &Collector{
+		mt: metrics.GetMetrics(),
+	}
+}
+
 func sendMetrics(mt *metrics.Metrics, path string, status int, start time.Time) {
 	end := time.Since(start)
 	mt.Time.WithLabelValues(strconv.Itoa(status), path).Observe(end.Seconds())
 	mt.Hits.WithLabelValues(strconv.Itoa(status), path).Inc()
 }
 
-func SendResponse(w http.ResponseWriter, path string, response Response, lg *slog.Logger, mt *metrics.Metrics, start time.Time) {
+func (c *Collector) SendResponse(w http.ResponseWriter, r *http.Request, response Response, lg *slog.Logger, start time.Time) {
 	jsonResponse, err := easyjson.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		sendMetrics(mt, path, http.StatusInternalServerError, start)
+		sendMetrics(c.mt, r.URL.Path, http.StatusInternalServerError, start)
 		lg.Error("failed to pack json", "err", err.Error())
 		return
 	}
-	sendMetrics(mt, path, response.Status, start)
+	sendMetrics(c.mt, r.URL.Path, response.Status, start)
 
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(jsonResponse)

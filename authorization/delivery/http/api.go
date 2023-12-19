@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/usecase"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/mailru/easyjson"
 
@@ -29,7 +28,7 @@ type IApi interface {
 type API struct {
 	core usecase.ICore
 	lg   *slog.Logger
-	mt   *metrics.Metrics
+	ct   *requests.Collector
 	mx   *http.ServeMux
 }
 
@@ -47,7 +46,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	api := &API{
 		core: c,
 		lg:   l.With("module", "api"),
-		mt:   metrics.GetMetrics(),
+		ct:   requests.GetCollector(),
 		mx:   http.NewServeMux(),
 	}
 
@@ -70,14 +69,14 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	found, _ := a.core.FindActiveSession(r.Context(), session.Value)
 	if !found {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	} else {
 		err := a.core.KillSession(r.Context(), session.Value)
@@ -87,7 +86,7 @@ func (a *API) LogoutSession(w http.ResponseWriter, r *http.Request) {
 		session.Expires = time.Now().AddDate(0, 0, -1)
 		http.SetCookie(w, session)
 	}
-	requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }
 
 func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
@@ -103,14 +102,14 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 
 	if !authorized {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 	login, err := a.core.GetUserName(r.Context(), session.Value)
 	if err != nil {
 		a.lg.Error("auth accept error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -118,13 +117,13 @@ func (a *API) AuthAccept(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("auth accept error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	authCheckResponse := requests.AuthCheckResponse{Login: login, Role: role}
 	response.Body = authCheckResponse
-	requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }
 
 func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +132,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -143,7 +142,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusPreconditionFailed
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -152,13 +151,13 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	if err = easyjson.Unmarshal(body, &request); err != nil {
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -166,12 +165,12 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signin error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 	if !found {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	} else {
 		sid, session, _ := a.core.CreateSession(r.Context(), user.Login)
@@ -184,7 +183,7 @@ func (a *API) Signin(w http.ResponseWriter, r *http.Request) {
 		}
 		http.SetCookie(w, cookie)
 	}
-	requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }
 
 func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
@@ -193,7 +192,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -203,7 +202,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusPreconditionFailed
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -213,7 +212,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -221,7 +220,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -229,13 +228,13 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Signup error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	if found {
 		response.Status = http.StatusConflict
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -248,7 +247,7 @@ func (a *API) Signup(w http.ResponseWriter, r *http.Request) {
 		a.lg.Error("failed to create user account", "err", err.Error())
 		response.Status = http.StatusBadRequest
 	}
-	requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }
 
 func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
@@ -262,12 +261,12 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 	if csrfToken != "" && found {
 		w.Header().Set("X-CSRF-Token", csrfToken)
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -275,12 +274,12 @@ func (a *API) GetCsrfToken(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.Header().Set("X-CSRF-Token", "null")
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	w.Header().Set("X-CSRF-Token", token)
-	requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }
 
 func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
@@ -291,7 +290,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		session, err := r.Cookie("session_id")
 		if err == http.ErrNoCookie {
 			response.Status = http.StatusUnauthorized
-			requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+			a.ct.SendResponse(w, r, response, a.lg, start)
 			return
 		}
 
@@ -303,7 +302,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		profile, err := a.core.GetUserProfile(login)
 		if err != nil {
 			response.Status = http.StatusInternalServerError
-			requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+			a.ct.SendResponse(w, r, response, a.lg, start)
 			return
 		}
 
@@ -316,19 +315,19 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		}
 
 		response.Body = profileResponse
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 	session, err := r.Cookie("session_id")
 	if err == http.ErrNoCookie {
 		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -341,7 +340,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err1 != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -353,7 +352,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil && !errors.Is(err, http.ErrMissingFile) {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -361,7 +360,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 
 	if isRepeatPassword {
 		response.Status = http.StatusConflict
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -373,10 +372,10 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			a.lg.Error("Post profile error", "err", err.Error())
 			response.Status = http.StatusInternalServerError
-			requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+			a.ct.SendResponse(w, r, response, a.lg, start)
 			return
 		}
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -385,7 +384,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil && handler != nil && photo != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -393,7 +392,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 	defer filePhoto.Close()
@@ -402,7 +401,7 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -410,8 +409,8 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Post profile error", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
-	requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }

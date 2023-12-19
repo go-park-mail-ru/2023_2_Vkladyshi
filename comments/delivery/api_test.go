@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/mocks"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/golang/mock/gomock"
 	"github.com/mailru/easyjson"
@@ -37,7 +36,7 @@ func createBody(req requests.CommentRequest) io.Reader {
 	return body
 }
 
-var collector *metrics.Metrics = metrics.GetMetrics()
+var collector *requests.Collector = requests.GetCollector()
 
 func TestComment(t *testing.T) {
 	testCases := map[string]struct {
@@ -70,7 +69,7 @@ func TestComment(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: collector}
+	api := API{core: mockCore, lg: logger, ct: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/comment", nil)
@@ -167,7 +166,7 @@ func TestCommentAdd(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: collector}
+	api := API{core: mockCore, lg: logger, ct: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/comment/add", curr.body)
