@@ -82,14 +82,14 @@ func sendMetrics(mt *metrics.Metrics, path string, status int, start time.Time) 
 
 func SendResponse(w http.ResponseWriter, path string, response Response, lg *slog.Logger, mt *metrics.Metrics, start time.Time) {
 	jsonResponse, err := easyjson.Marshal(response)
-	sendMetrics(mt, path, response.Status, start)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		sendMetrics(mt, path, http.StatusInternalServerError, start)
 		lg.Error("failed to pack json", "err", err.Error())
 		return
 	}
-
+	sendMetrics(mt, path, response.Status, start)
+	
 	w.Header().Set("Content-Type", "application/json")
 	_, err = w.Write(jsonResponse)
 	if err != nil {
