@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -82,7 +81,6 @@ func sendMetrics(mt *metrics.Metrics, path string, status int, start time.Time) 
 }
 
 func SendResponse(w http.ResponseWriter, path string, response Response, lg *slog.Logger, mt *metrics.Metrics, start time.Time) {
-	fmt.Println(response)
 	jsonResponse, err := easyjson.Marshal(response)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
