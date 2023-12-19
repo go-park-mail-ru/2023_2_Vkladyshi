@@ -64,6 +64,8 @@ func createRatingBody(req requests.CommentRequest) io.Reader {
 	return body
 }
 
+var collector *metrics.Metrics = metrics.GetMetrics()
+
 func TestFilms(t *testing.T) {
 	expectedGenre := "g1"
 	filmItem := models.FilmItem{Title: "t1"}
@@ -105,7 +107,7 @@ func TestFilms(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/films", nil)
@@ -188,7 +190,7 @@ func TestFilm(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/film", nil)
@@ -265,7 +267,7 @@ func TestActor(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/actor", nil)
@@ -342,7 +344,7 @@ func TestFindFilm(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/search/film", curr.body)
@@ -413,7 +415,7 @@ func TestFindActor(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/search/actor", curr.body)
@@ -469,7 +471,7 @@ func TestCalendar(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/calendar", nil)
@@ -534,7 +536,7 @@ func TestFavoriteFilmsAdd(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/favorite/film/add", nil)
@@ -599,7 +601,7 @@ func TestFavoriteFilmsRemove(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/favorite/film/remove", nil)
@@ -662,7 +664,7 @@ func TestFavoriteFilms(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/favorite/films", nil)
@@ -733,7 +735,7 @@ func TestFavoriteActorsAdd(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/favorite/actor/add", nil)
@@ -798,7 +800,7 @@ func TestFavoriteActorsRemove(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/favorite/actor/remove", nil)
@@ -862,7 +864,7 @@ func TestFavoriteActors(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/favorite/actors", nil)
@@ -933,7 +935,7 @@ func TestAddRating(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/rating/add", curr.body)

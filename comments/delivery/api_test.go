@@ -12,10 +12,23 @@ import (
 	"testing"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/mocks"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/golang/mock/gomock"
 	"github.com/mailru/easyjson"
 )
+
+func getResponse(w *httptest.ResponseRecorder) (*requests.Response, error) {
+	var response requests.Response
+
+	body, _ := io.ReadAll(w.Body)
+	err := easyjson.Unmarshal(body, &response)
+	if err != nil {
+		return nil, fmt.Errorf("cant unmarshal jsone")
+	}
+
+	return &response, nil
+}
 
 func createBody(req requests.CommentRequest) io.Reader {
 	jsonReq, _ := easyjson.Marshal(req)
@@ -23,6 +36,8 @@ func createBody(req requests.CommentRequest) io.Reader {
 	body := bytes.NewBuffer(jsonReq)
 	return body
 }
+
+var collector *metrics.Metrics = metrics.GetMetrics()
 
 func TestComment(t *testing.T) {
 	testCases := map[string]struct {
@@ -55,7 +70,7 @@ func TestComment(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/comment", nil)
@@ -66,10 +81,12 @@ func TestComment(t *testing.T) {
 		r.URL.RawQuery = q.Encode()
 		w := httptest.NewRecorder()
 
-		response := requests.Response{Status: http.StatusBadRequest, Body: nil}
-
 		api.Comment(w, r)
-
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
 		if response.Status != curr.result.Status {
 			t.Errorf("unexpected status: %d", response.Status)
 			return
@@ -150,9 +167,7 @@ func TestCommentAdd(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger}
-
-	response := requests.Response{Status: http.StatusBadRequest, Body: nil}
+	api := API{core: mockCore, lg: logger, mt: collector}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/comment/add", curr.body)
@@ -162,7 +177,11 @@ func TestCommentAdd(t *testing.T) {
 			r.AddCookie(&http.Cookie{Name: "session_id", Value: curr.cookieValue})
 		}
 		api.AddComment(w, r)
-
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
 		if response.Status != curr.result.Status {
 			fmt.Println(api.lg)
 			t.Errorf("unexpected status: %d, wanted: %d", response.Status, curr.result.Status)

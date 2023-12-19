@@ -68,7 +68,6 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	if r.Method != http.MethodGet {
-		fmt.Println("nice")
 		response.Status = http.StatusMethodNotAllowed
 		requests.SendResponse(w, r.URL.Path, response, a.lg, a.mt, start)
 		return
