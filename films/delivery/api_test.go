@@ -13,12 +13,25 @@ import (
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/mocks"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/usecase"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/metrics"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/middleware"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
 	"github.com/golang/mock/gomock"
 	"github.com/mailru/easyjson"
 )
+
+func getResponse(w *httptest.ResponseRecorder) (*requests.Response, error) {
+	var response requests.Response
+
+	body, _ := io.ReadAll(w.Body)
+	err := easyjson.Unmarshal(body, &response)
+	if err != nil {
+		return nil, fmt.Errorf("cant unmarshal jsone")
+	}
+
+	return &response, nil
+}
 
 func createBody(req requests.FindFilmRequest) io.Reader {
 	jsonReq, _ := easyjson.Marshal(req)
@@ -82,9 +95,7 @@ func TestFilms(t *testing.T) {
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
-	api := API{core: mockCore, lg: logger}
-
-	response := requests.Response{Status: http.StatusOK, Body: nil}
+	api := API{core: mockCore, lg: logger, mt: metrics.GetMetrics()}
 
 	for _, curr := range testCases {
 		r := httptest.NewRequest(curr.method, "/api/v1/films", nil)
@@ -96,7 +107,11 @@ func TestFilms(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		api.Films(w, r)
-
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
 		if response.Status != curr.result.Status {
 			t.Errorf("unexpected status: %d, want %d", response.Status, curr.result.Status)
 			return
