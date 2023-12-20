@@ -58,6 +58,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	api.mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
 	api.mx.HandleFunc("/api/v1/settings", api.Profile)
 	api.mx.HandleFunc("/api/v1/subcribePush", api.SubcribePush)
+	api.mx.HandleFunc("/api/v1/is_subscribed", api.IsSubcribed)
 
 	return api
 }
