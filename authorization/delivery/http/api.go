@@ -57,6 +57,7 @@ func GetApi(c *usecase.Core, l *slog.Logger) *API {
 	api.mx.HandleFunc("/authcheck", api.AuthAccept)
 	api.mx.HandleFunc("/api/v1/csrf", api.GetCsrfToken)
 	api.mx.HandleFunc("/api/v1/settings", api.Profile)
+	api.mx.HandleFunc("/api/v1/subcribePush", api.SubcribePush)
 
 	return api
 }
@@ -412,5 +413,79 @@ func (a *API) Profile(w http.ResponseWriter, r *http.Request) {
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) SubcribePush(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	session, err := r.Cookie("session_id")
+	if errors.Is(err, http.ErrNoCookie) {
+		response.Status = http.StatusUnauthorized
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	userName, err := a.core.GetUserName(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("subcribe push error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	isSubcribed, err := a.core.Subscribe(userName)
+	if err != nil {
+		a.lg.Error("subcribe push error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	subResponse := requests.SubcribeResponse{IsSubcribed: isSubcribed}
+	response.Body = subResponse
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) IsSubcribed(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	session, err := r.Cookie("session_id")
+	if errors.Is(err, http.ErrNoCookie) {
+		response.Status = http.StatusUnauthorized
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	userName, err := a.core.GetUserName(r.Context(), session.Value)
+	if err != nil {
+		a.lg.Error("is subcribed error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	isSubcribed, err := a.core.IsSubscribed(userName)
+	if err != nil {
+		a.lg.Error("is subcribed error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	subResponse := requests.SubcribeResponse{IsSubcribed: isSubcribed}
+	response.Body = subResponse
 	a.ct.SendResponse(w, r, response, a.lg, start)
 }

@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -95,14 +96,8 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 	}
 
 	session, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
+	if errors.Is(err, http.ErrNoCookie) {
 		response.Status = http.StatusUnauthorized
-		a.ct.SendResponse(w, r, response, a.lg, start)
-		return
-	}
-	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}

@@ -72,6 +72,10 @@ type (
 		CurrentDay uint8            `json:"currentDay"`
 		Days       []models.DayItem `json:"days"`
 	}
+
+	SubcribeResponse struct {
+		IsSubcribed bool `json:"subscribe"`
+	}
 )
 
 type Collector struct {
