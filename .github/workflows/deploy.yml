@@ -6,8 +6,6 @@ on:
       - 'main'
 
 env:
-   SERVER_HOST: 84.23.54.189
-   SERVER_USER: ubuntu
    SERVER_PATH: /home/ubuntu
 
 jobs:
@@ -27,7 +25,6 @@ jobs:
           go build -o "cmd/films" "cmd/films/main.go" && \
           go build -o "cmd/comments" "cmd/comments/main.go" && \
           go build -o "cmd/authorization" "cmd/authorization/main.go"
-
       - name: Create SSH directory and known_hosts file
         run: |
           mkdir -p ~/.ssh
@@ -39,10 +36,10 @@ jobs:
         run: chmod 400 2023-2-Vkladyshi-D7WFxsn1.crt
         
       - name: Update known hosts
-        run: ssh-keyscan -H $SERVER_HOST >> ~/.ssh/known_hosts
+        run: ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
       - name: Deploy file configure
         run:  mkdir deploy &&
               cp -r cmd configs deploy
 
       - name: Copy deploy files to server
-        run:  scp -i 2023-2-Vkladyshi-D7WFxsn1.crt -r deploy $SERVER_USER@$SERVER_HOST:$SERVER_PATH
+        run:  scp -i 2023-2-Vkladyshi-D7WFxsn1.crt -r deploy "${{ secrets.SERVER_USER }}"@"${{ secrets.SERVER_HOST }}":$SERVER_PATH
