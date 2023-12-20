@@ -8,19 +8,21 @@ import (
 )
 
 type DbDsnCfg struct {
-	User          string `yaml:"user"`
-	DbName        string `yaml:"dbname"`
-	Password      string `yaml:"password"`
-	Host          string `yaml:"host"`
-	Port          int    `yaml:"port"`
-	Sslmode       string `yaml:"sslmode"`
-	MaxOpenConns  int    `yaml:"max_open_conns"`
-	Timer         uint32 `yaml:"timer"`
-	Films_db      string `yaml:"films_db"`
-	Genres_db     string `yaml:"genres_db"`
-	Crew_db       string `yaml:"crew_db"`
-	Profession_db string `yaml:"profession_db"`
-	ServerAdress  string `yaml:"server_adress"`
+	User         string `yaml:"user"`
+	DbName       string `yaml:"dbname"`
+	Password     string `yaml:"password"`
+	Host         string `yaml:"host"`
+	Port         int    `yaml:"port"`
+	Sslmode      string `yaml:"sslmode"`
+	MaxOpenConns int    `yaml:"max_open_conns"`
+	Timer        uint32 `yaml:"timer"`
+	FilmsDb      string `yaml:"films_db"`
+	GenresDb     string `yaml:"genres_db"`
+	CrewDb       string `yaml:"crew_db"`
+	ProfessionDb string `yaml:"profession_db"`
+	CalendarDb   string `yaml:"calendar_db"`
+	ServerAdress string `yaml:"server_adress"`
+	GrpcPort     string `yaml:"grpc_port"`
 }
 
 type CommentCfg struct {
@@ -32,8 +34,9 @@ type CommentCfg struct {
 	Sslmode      string `yaml:"sslmode"`
 	MaxOpenConns int    `yaml:"max_open_conns"`
 	Timer        uint32 `yaml:"timer"`
-	Comments_db  string `yaml:"comment_db"`
+	CommentsDb   string `yaml:"comment_db"`
 	ServerAdress string `yaml:"server_adress"`
+	GrpcPort     string `yaml:"grpc_port"`
 }
 
 type DbRedisCfg struct {
@@ -43,7 +46,32 @@ type DbRedisCfg struct {
 	Timer    int    `yaml:"timer"`
 }
 
+type GrpcConfig struct {
+	Port           string `yaml:"port"`
+	ConnectionType string `yaml:"connection_type"`
+}
+
+func ReadGrpcConfig() (*GrpcConfig, error) {
+	flag.Parse()
+	var path string
+	flag.StringVar(&path, "config_path_auth", "../../configs/auth_server_cfg.yaml", "Путь к конфигу")
+
+	grpcConfig := GrpcConfig{}
+	grpcFile, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(grpcFile, &grpcConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return &grpcConfig, nil
+}
+
 func ReadCsrfRedisConfig() (*DbRedisCfg, error) {
+	flag.Parse()
 	var path string
 	flag.StringVar(&path, "config_path", "../../configs/db_csrf.yaml", "Путь к конфигу")
 
@@ -92,6 +120,7 @@ func ReadConfig() (*DbDsnCfg, error) {
 }
 
 func ReadFilmConfig() (*DbDsnCfg, error) {
+	flag.Parse()
 	var path string
 	flag.StringVar(&path, "films_config_path", "../../configs/db_film_dsn.yaml", "Путь к конфигу фильмов")
 
@@ -110,6 +139,7 @@ func ReadFilmConfig() (*DbDsnCfg, error) {
 }
 
 func ReadCommentConfig() (*CommentCfg, error) {
+	flag.Parse()
 	var path string
 	flag.StringVar(&path, "comments_config_path", "../../configs/db_comment_dsn.yaml", "Путь к конфигу комментов")
 

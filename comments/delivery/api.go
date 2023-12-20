@@ -1,35 +1,41 @@
 package delivery
 
 import (
-	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/comments/usecase"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/middleware"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
+	"github.com/mailru/easyjson"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type API struct {
 	core   usecase.ICore
 	lg     *slog.Logger
 	mx     *http.ServeMux
+	ct     *requests.Collector
 	adress string
 }
 
 func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.CommentCfg) *API {
+
 	api := &API{
 		core:   c,
 		lg:     l.With("module", "api"),
+		mx:     http.NewServeMux(),
+		ct:     requests.GetCollector(),
 		adress: cfg.ServerAdress,
 	}
-	mx := http.NewServeMux()
-	mx.HandleFunc("/api/v1/comment", api.Comment)
-	mx.HandleFunc("/api/v1/comment/add", api.AddComment)
 
-	api.mx = mx
+	api.mx.Handle("/metrics", promhttp.Handler())
+	api.mx.HandleFunc("/api/v1/comment", api.Comment)
+	api.mx.Handle("/api/v1/comment/add", middleware.AuthCheck(http.HandlerFunc(api.AddComment), c, l))
 
 	return api
 }
@@ -43,16 +49,17 @@ func (a *API) ListenAndServe() {
 
 func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
 	if r.Method != http.MethodGet {
 		response.Status = http.StatusMethodNotAllowed
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	filmId, err := strconv.ParseUint(r.URL.Query().Get("film_id"), 10, 64)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 	page, err := strconv.ParseUint(r.URL.Query().Get("page"), 10, 64)
@@ -68,57 +75,40 @@ func (a *API) Comment(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		a.lg.Error("Comment", "err", err.Error())
 		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
 	commentsResponse := requests.CommentResponse{Comments: comments}
 
 	response.Body = commentsResponse
-	requests.SendResponse(w, response, a.lg)
+
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }
 
 func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
 	if r.Method != http.MethodPost {
 		response.Status = http.StatusMethodNotAllowed
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
-	session, err := r.Cookie("session_id")
-	if err == http.ErrNoCookie {
-		response.Status = http.StatusUnauthorized
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
-
-	userId, err := a.core.GetUserId(r.Context(), session.Value)
-	if err != nil {
-		a.lg.Error("Add comment error", "err", err.Error())
-		response.Status = http.StatusInternalServerError
-		requests.SendResponse(w, response, a.lg)
-		return
-	}
+	userId := r.Context().Value(middleware.UserIDKey).(uint64)
 
 	var commentRequest requests.CommentRequest
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
-	if err = json.Unmarshal(body, &commentRequest); err != nil {
+	if err = easyjson.Unmarshal(body, &commentRequest); err != nil {
 		response.Status = http.StatusBadRequest
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
@@ -129,9 +119,9 @@ func (a *API) AddComment(w http.ResponseWriter, r *http.Request) {
 	}
 	if found {
 		response.Status = http.StatusNotAcceptable
-		requests.SendResponse(w, response, a.lg)
+		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
 
-	requests.SendResponse(w, response, a.lg)
+	a.ct.SendResponse(w, r, response, a.lg, start)
 }

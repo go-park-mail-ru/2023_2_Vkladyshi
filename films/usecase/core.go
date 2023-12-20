@@ -1,11 +1,13 @@
 package usecase
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
+	auth "github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/proto"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/calendar"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/crew"
@@ -14,9 +16,16 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/films/repository/profession"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/requests"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-var ErrNotFound = errors.New("not found")
+var (
+	ErrNotFound      = errors.New("not found")
+	ErrFoundFavorite = errors.New("found favorite")
+)
+
+//go:generate mockgen -source=core.go -destination=../mocks/core_mock.go -package=mocks
 
 type ICore interface {
 	GetFilmsAndGenreTitle(genreId uint64, start uint64, end uint64) ([]models.FilmItem, string, error)
@@ -25,12 +34,19 @@ type ICore interface {
 	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
 	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 	) ([]models.FilmItem, error)
-	FavoriteFilms(userId uint64) ([]models.FilmItem, error)
+	FavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	FavoriteFilmsAdd(userId uint64, filmId uint64) error
 	FavoriteFilmsRemove(userId uint64, filmId uint64) error
 	GetCalendar() (*requests.CalendarResponse, error)
+	GetUserId(ctx context.Context, sid string) (uint64, error)
+	FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error)
+	AddRating(filmId uint64, userId uint64, rating uint16) (bool, error)
+	AddFilm(film models.FilmItem, genres []uint64, actors []uint64) error
+	FavoriteActors(userId uint64, start uint64, end uint64) ([]models.Character, error)
+	FavoriteActorsAdd(userId uint64, filmId uint64) error
+	FavoriteActorsRemove(userId uint64, filmId uint64) error
 }
 
 type Core struct {
@@ -40,15 +56,36 @@ type Core struct {
 	crew       crew.ICrewRepo
 	profession profession.IProfessionRepo
 	calendar   calendar.ICalendarRepo
+	client     auth.AuthorizationClient
 }
 
-func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger, films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo) *Core {
+func GetClient(port string) (auth.AuthorizationClient, error) {
+	conn, err := grpc.Dial(port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("grpc connect err: %w", err)
+	}
+	client := auth.NewAuthorizationClient(conn)
+
+	return client, nil
+}
+
+func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger,
+	films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo, calendar calendar.ICalendarRepo,
+) *Core {
+	client, err := GetClient(cfg_sql.GrpcPort)
+	if err != nil {
+		lg.Error("get client error", "err", err.Error())
+		return nil
+	}
+
 	core := Core{
 		lg:         lg.With("module", "core"),
 		films:      films,
 		genres:     genres,
 		crew:       actors,
 		profession: professions,
+		calendar:   calendar,
+		client:     client,
 	}
 	return &core
 }
@@ -177,7 +214,7 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 }
 
 func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+	ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 ) ([]models.FilmItem, error) {
 
 	films, err := core.films.FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
@@ -186,11 +223,15 @@ func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
 		return nil, fmt.Errorf("find film err: %w", err)
 	}
 
+	if len(films) == 0 {
+		return nil, ErrNotFound
+	}
+
 	return films, nil
 }
 
-func (core *Core) FavoriteFilms(userId uint64) ([]models.FilmItem, error) {
-	films, err := core.films.GetFavoriteFilms(userId)
+func (core *Core) FavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error) {
+	films, err := core.films.GetFavoriteFilms(userId, start, end)
 	if err != nil {
 		core.lg.Error("favorite films error", "err", err.Error())
 		return nil, fmt.Errorf("favorite films err: %w", err)
@@ -200,7 +241,16 @@ func (core *Core) FavoriteFilms(userId uint64) ([]models.FilmItem, error) {
 }
 
 func (core *Core) FavoriteFilmsAdd(userId uint64, filmId uint64) error {
-	err := core.films.AddFavoriteFilm(userId, filmId)
+	found, err := core.films.CheckFilm(userId, filmId)
+	if err != nil {
+		core.lg.Error("favorite film add error", "err", err.Error())
+		return fmt.Errorf("favorite film add err: %w", err)
+	}
+	if found {
+		return ErrFoundFavorite
+	}
+
+	err = core.films.AddFavoriteFilm(userId, filmId)
 	if err != nil {
 		core.lg.Error("favorite film add error", "err", err.Error())
 		return fmt.Errorf("favorite film add err: %w", err)
@@ -220,18 +270,128 @@ func (core *Core) FavoriteFilmsRemove(userId uint64, filmId uint64) error {
 }
 
 func (core *Core) GetCalendar() (*requests.CalendarResponse, error) {
-	var result *requests.CalendarResponse
+	result := &requests.CalendarResponse{}
 
-	calendar, err := core.calendar.GetCalendar()
+	news, err := core.calendar.GetCalendar()
 	if err != nil {
 		core.lg.Error("get calendar error", "err", err.Error())
 		return nil, fmt.Errorf("get calendar err: %w", err)
 	}
 
-	result.Days = calendar
+	result.Days = news
 	result.CurrentDay = uint8(time.Now().Day())
 	result.MonthName = time.Now().Month().String()
 	result.MonthText = "Новинки этого месяца"
 
 	return result, nil
+}
+
+func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
+	request := auth.FindIdRequest{Sid: sid}
+
+	response, err := core.client.GetId(ctx, &request)
+	if err != nil {
+		core.lg.Error("get user id error", "err", err.Error())
+		return 0, fmt.Errorf("get user id err: %w", err)
+	}
+	return uint64(response.Value), nil
+}
+
+func (core *Core) FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error) {
+	actors, err := core.crew.FindActor(name, birthDate, films, career, country)
+	if err != nil {
+		core.lg.Error("find actor error", "err", err.Error())
+		return nil, fmt.Errorf("find actor err: %w", err)
+	}
+	if len(actors) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return actors, nil
+}
+
+func (core *Core) AddRating(filmId uint64, userId uint64, rating uint16) (bool, error) {
+	found, err := core.films.HasUsersRating(userId, filmId)
+	if err != nil {
+		core.lg.Error("find users rating error", "err", err.Error())
+		return false, fmt.Errorf("find users rating error: %w", err)
+	}
+	if found {
+		return found, nil
+	}
+
+	err = core.films.AddRating(filmId, userId, rating)
+	if err != nil {
+		core.lg.Error("add rating error", "err", err.Error())
+		return false, fmt.Errorf("add rating err: %w", err)
+	}
+
+	return false, nil
+}
+
+func (core *Core) AddFilm(film models.FilmItem, genres []uint64, actors []uint64) error {
+	err := core.films.AddFilm(film)
+	if err != nil {
+		core.lg.Error("add film error", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	id, err := core.films.GetFilmId(film.Title)
+	if err != nil {
+		core.lg.Error("get film id", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	err = core.genres.AddFilm(genres, id)
+	if err != nil {
+		core.lg.Error("add films genres error", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	err = core.crew.AddFilm(actors, id)
+	if err != nil {
+		core.lg.Error("add films actors error", "err", err.Error())
+		return fmt.Errorf("add film err: %w", err)
+	}
+
+	return nil
+}
+
+func (core *Core) FavoriteActors(userId uint64, start uint64, end uint64) ([]models.Character, error) {
+	actors, err := core.crew.GetFavoriteActors(userId, start, end)
+	if err != nil {
+		core.lg.Error("favorite actors error", "err", err.Error())
+		return nil, fmt.Errorf("favorite actors err: %w", err)
+	}
+
+	return actors, nil
+}
+
+func (core *Core) FavoriteActorsAdd(userId uint64, actorId uint64) error {
+	found, err := core.crew.CheckActor(userId, actorId)
+	if err != nil {
+		core.lg.Error("favorite actors add error", "err", err.Error())
+		return fmt.Errorf("favorite actors add err: %w", err)
+	}
+	if found {
+		return ErrFoundFavorite
+	}
+
+	err = core.crew.AddFavoriteActor(userId, actorId)
+	if err != nil {
+		core.lg.Error("favorite actors add error", "err", err.Error())
+		return fmt.Errorf("favorite actors add err: %w", err)
+	}
+
+	return nil
+}
+
+func (core *Core) FavoriteActorsRemove(userId uint64, actorId uint64) error {
+	err := core.crew.RemoveFavoriteActor(userId, actorId)
+	if err != nil {
+		core.lg.Error("favorite actors remove error", "err", err.Error())
+		return fmt.Errorf("favorite actors remove err: %w", err)
+	}
+
+	return nil
 }

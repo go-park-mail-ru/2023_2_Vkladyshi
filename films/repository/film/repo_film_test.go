@@ -8,7 +8,6 @@ import (
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
-	"github.com/lib/pq"
 )
 
 func TestGetFilmsByGenre(t *testing.T) {
@@ -140,7 +139,7 @@ func TestGetFilm(t *testing.T) {
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT * FROM film WHERE id = $1")).
+		regexp.QuoteMeta("SELECT id, title, info, poster, release_date, country, mpaa FROM film WHERE id = $1")).
 		WithArgs(1).
 		WillReturnRows(rows)
 
@@ -164,7 +163,7 @@ func TestGetFilm(t *testing.T) {
 	}
 
 	mock.ExpectQuery(
-		regexp.QuoteMeta("SELECT * FROM film WHERE id = $1")).
+		regexp.QuoteMeta("SELECT id, title, info, poster, release_date, country, mpaa FROM film WHERE id = $1")).
 		WithArgs(1).
 		WillReturnError(fmt.Errorf("db_error"))
 
@@ -260,17 +259,17 @@ func TestFindFilm(t *testing.T) {
 		rows = rows.AddRow(item.Title, item.Id, item.Poster, expectRating[0])
 	}
 
-	selectStr := "SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film JOIN films_genre ON film.id = films_genre.id_film JOIN genre ON genre.id = films_genre.id_genre JOIN users_comment ON film.id = users_comment.id_film JOIN person_in_film ON film.id = person_in_film.id_film JOIN crew ON person_in_film.id_person = crew.id WHERE (CASE WHEN array_length($1::varchar[], 1)> 0 THEN genre.title = ANY ($1::varchar[]) ELSE TRUE END) AND (CASE WHEN array_length($2::varchar[], 1)> 0 THEN crew.name = ANY ($2::varchar[]) ELSE TRUE END) GROUP BY film.title, film.id, genre.title HAVING AVG(users_comment.rating) > $3 AND AVG(users_comment.rating) < $4 ORDER BY film.title"
+	selectStr := "SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film JOIN films_genre ON film.id = films_genre.id_film JOIN users_comment ON film.id = users_comment.id_film JOIN person_in_film ON film.id = person_in_film.id_film JOIN crew ON person_in_film.id_person = crew.id GROUP BY film.title, film.id HAVING AVG(users_comment.rating) >= $1 AND AVG(users_comment.rating) <= $2 ORDER BY film.title"
 	mock.ExpectQuery(
 		regexp.QuoteMeta(selectStr)).
-		WithArgs(pq.Array([]string{}), pq.Array([]string{}), float32(0), float32(10), "", "", "", "").
+		WithArgs(float32(0), float32(10)).
 		WillReturnRows(rows)
 
 	repo := &RepoPostgre{
 		db: db,
 	}
 
-	film, err := repo.FindFilm("", "", "", float32(0), float32(10), "", []string{}, []string{})
+	film, err := repo.FindFilm("", "", "", float32(0), float32(10), "", []uint32{}, []string{""})
 	if err != nil {
 		t.Errorf("GetFilm error: %s", err)
 	}
@@ -286,10 +285,10 @@ func TestFindFilm(t *testing.T) {
 
 	mock.ExpectQuery(
 		regexp.QuoteMeta(selectStr)).
-		WithArgs("", "", "", float32(0), float32(10), "", []string{}, []string{}).
+		WithArgs(float32(0), float32(10)).
 		WillReturnError(fmt.Errorf("db_error"))
 
-	film, err = repo.FindFilm("", "", "", float32(0), float32(10), "", []string{}, []string{})
+	film, err = repo.FindFilm("", "", "", float32(0), float32(10), "", []uint32{0}, []string{""})
 	if err == mock.ExpectationsWereMet() {
 		t.Errorf("there were unfulfilled expectations: %s", err)
 		return
@@ -301,5 +300,425 @@ func TestFindFilm(t *testing.T) {
 
 	if film != nil {
 		t.Errorf("expected film nil, got %v", film)
+	}
+}
+
+func TestGetFavoriteFilms(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Title", "Id", "Poster"})
+
+	expect := []models.FilmItem{
+		{Id: 1, Title: "t1", Poster: "url1"},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Title, item.Id, item.Poster)
+	}
+	selectRow := "SELECT film.title, film.id, film.poster FROM film JOIN users_favorite_film ON film.id = users_favorite_film.id_film WHERE id_user = $1 OFFSET $2 LIMIT $3"
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1, 2).
+		WillReturnRows(rows)
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	films, err := repo.GetFavoriteFilms(1, 1, 2)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !reflect.DeepEqual(films, expect) {
+		t.Errorf("results not match, want %v, have %v", expect, films)
+		return
+	}
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1, 2).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	_, err = repo.GetFavoriteFilms(1, 1, 2)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestCheckFilm(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Id"})
+
+	expect := []models.FilmItem{
+		{Id: 1},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Id)
+	}
+	selectRow := "SELECT id_film FROM users_favorite_film WHERE id_film = $1 AND id_user = $2"
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).
+		WillReturnRows(rows)
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	found, err := repo.CheckFilm(1, 1)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !found {
+		t.Errorf("expected found")
+		return
+	}
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	found, err = repo.CheckFilm(1, 1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if found {
+		t.Errorf("expected not found")
+		return
+	}
+}
+
+func TestHasUsersRating(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Id"})
+
+	expect := []models.FilmItem{
+		{Id: 1},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Id)
+	}
+	selectRow := "SELECT id_user FROM users_comment WHERE id_user = $1 AND id_film = $2"
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).
+		WillReturnRows(rows)
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	found, err := repo.HasUsersRating(1, 1)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if !found {
+		t.Errorf("expected found")
+		return
+	}
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).
+		WillReturnError(fmt.Errorf("db_error"))
+
+	found, err = repo.HasUsersRating(1, 1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if found {
+		t.Errorf("expected not found")
+		return
+	}
+}
+
+func TestAddFavoriteFilm(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	selectRow := "INSERT INTO users_favorite_film(id_user, id_film) VALUES ($1, $2)"
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	err = repo.AddFavoriteFilm(1, 1)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).WillReturnError(fmt.Errorf("repo err"))
+
+	err = repo.AddFavoriteFilm(1, 1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestRemoveFavoriteFilm(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	selectRow := "DELETE FROM users_favorite_film WHERE id_user = $1 AND id_film = $2"
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	err = repo.RemoveFavoriteFilm(1, 1)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).WillReturnError(fmt.Errorf("repo err"))
+
+	err = repo.RemoveFavoriteFilm(1, 1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestAddRating(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	selectRow := "INSERT INTO users_comment(id_film, rating, id_user) VALUES($1, $2, $3)"
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 5, 1).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	err = repo.AddRating(1, 1, 5)
+	if err != nil {
+		t.Errorf("unexpected err: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1, 5).WillReturnError(fmt.Errorf("repo err"))
+
+	err = repo.AddRating(1, 5, 1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestAddFilm(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	filmItem := models.FilmItem{
+		Title:       "t",
+		Info:        "i",
+		Poster:      "p",
+		ReleaseDate: "rd",
+		Country:     "c",
+		Mpaa:        "m",
+	}
+	selectRow := "INSERT INTO film(title, info, poster, release_date, country, mpaa) VALUES($1, $2, $3, $4, $5, $6)"
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs("t", "i", "p", "rd", "c", "m").WillReturnResult(sqlmock.NewResult(0, 1))
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	err = repo.AddFilm(filmItem)
+	if err != nil {
+		t.Errorf("unexpected err: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs("t", "i", "p", "rd", "c", "m").WillReturnError(fmt.Errorf("repo err"))
+
+	err = repo.AddFilm(filmItem)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}
+
+func TestGetFilmId(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	rows := sqlmock.NewRows([]string{"Id"})
+
+	expect := []models.FilmItem{
+		{Id: 1, Title: "t"},
+	}
+
+	for _, item := range expect {
+		rows = rows.AddRow(item.Id)
+	}
+	selectRow := "SELECT id FROM film WHERE title = $1"
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs("t").
+		WillReturnRows(rows)
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	id, err := repo.GetFilmId(expect[0].Title)
+	if err != nil {
+		t.Errorf("GetFilmsByGenre error: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	if id != expect[0].Id {
+		t.Errorf("wanted %d, got %d", expect[0].Id, id)
+		return
+	}
+
+	mock.ExpectQuery(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs("t").
+		WillReturnError(fmt.Errorf("db_error"))
+
+	id, err = repo.GetFilmId(expect[0].Title)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+	if id != 0 {
+		t.Errorf("wanted 0, got %d", id)
+		return
 	}
 }

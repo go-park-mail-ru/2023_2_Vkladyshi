@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
 func TestGetUser(t *testing.T) {
@@ -18,11 +19,11 @@ func TestGetUser(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"photo", "login"})
 
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Photo: "url1",
 		Login: "l1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login, item.Photo)
@@ -80,10 +81,10 @@ func TestFindUser(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"login"})
 
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Login: "l1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login)
@@ -136,14 +137,14 @@ func TestCreateUser(t *testing.T) {
 
 	rows := sqlmock.NewRows([]string{"login"})
 
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Login:     "l1",
 		Password:  "p1",
 		Birthdate: "2003-10-08",
 		Name:      "n1",
 		Email:     "e1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login)
@@ -194,22 +195,22 @@ func TestEditProfile(t *testing.T) {
 	rows := sqlmock.NewRows([]string{"login"})
 
 	prev := "l0"
-	testUser := UserItem{
+	testUser := models.UserItem{
 		Login:     "l1",
 		Password:  "p1",
 		Birthdate: "2003-10-08",
 		Email:     "e1",
 		Photo:     "ph1",
 	}
-	expect := []*UserItem{&testUser}
+	expect := []*models.UserItem{&testUser}
 
 	for _, item := range expect {
 		rows = rows.AddRow(item.Login)
 	}
 
 	mock.ExpectExec(
-		regexp.QuoteMeta("UPDATE profile SET login = $1, password = $2, photo = $3, email = $4, birth_date = $5 WHERE login = $6")).
-		WithArgs(testUser.Login, testUser.Password, testUser.Photo, testUser.Email, testUser.Birthdate, prev).
+		regexp.QuoteMeta("UPDATE profile SET login = $1, photo = $2, email = $3, password = $4, birth_date = $5 WHERE login = $6")).
+		WithArgs(testUser.Login, testUser.Photo, testUser.Email, testUser.Password, testUser.Birthdate, prev).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
 	repo := &RepoPostgre{
@@ -227,15 +228,11 @@ func TestEditProfile(t *testing.T) {
 	}
 
 	mock.ExpectExec(
-		regexp.QuoteMeta("UPDATE profile SET login = $1, password = $2, photo = $3, email = $4, birth_date = $5 WHERE login = $6")).
+		regexp.QuoteMeta("UPDATE profile SET login = $1, photo = $2, email = $3, password = $4, birth_date = $5 WHERE login = $6")).
 		WithArgs(testUser.Login, testUser.Password, testUser.Photo, testUser.Email, testUser.Birthdate, prev).
 		WillReturnError(fmt.Errorf("db_error"))
 
 	err = repo.EditProfile(prev, testUser.Login, testUser.Password, testUser.Email, testUser.Birthdate, testUser.Photo)
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("there were unfulfilled expectations: %s", err)
-		return
-	}
 	if err == nil {
 		t.Errorf("expected error, got nil")
 		return

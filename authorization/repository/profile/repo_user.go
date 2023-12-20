@@ -5,20 +5,28 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 	_ "github.com/jackc/pgx/stdlib"
+	"github.com/lib/pq"
 )
 
 type IUserRepo interface {
-	GetUser(login string, password string) (*UserItem, bool, error)
+	GetUser(login string, password string) (*models.UserItem, bool, error)
 	GetUserProfileId(login string) (int64, error)
 	FindUser(login string) (bool, error)
 	CreateUser(login string, password string, name string, birthDate string, email string) error
-	GetUserProfile(login string) (*UserItem, error)
+	GetUserProfile(login string) (*models.UserItem, error)
 	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error
-	GetIdsAndPaths() ([]int32, []string, error) 
+	GetNamesAndPaths(ids []int32) ([]string, []string, error)
+	CheckUserPassword(login string, password string) (bool, error)
+	GetUserRole(login string) (string, error)
+	IsSubscribed(login string) (bool, error)
+	ChangeSubsribe(login string, isSubscribed bool) error
 }
 
 type RepoPostgre struct {
@@ -57,8 +65,24 @@ func (repo *RepoPostgre) pingDb(timer uint32, lg *slog.Logger) {
 	}
 }
 
-func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool, error) {
-	post := &UserItem{}
+func (repo *RepoPostgre) CheckUserPassword(login string, password string) (bool, error) {
+	post := &models.UserItem{}
+
+	err := repo.db.QueryRow(
+		"SELECT login FROM profile "+
+			"WHERE login = $1 AND password = $2", login, password).Scan(&post.Login)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("CheckUserPassword err: %w", err)
+	}
+
+	return true, nil
+}
+
+func (repo *RepoPostgre) GetUser(login string, password string) (*models.UserItem, bool, error) {
+	post := &models.UserItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT login, photo FROM profile "+
@@ -74,7 +98,7 @@ func (repo *RepoPostgre) GetUser(login string, password string) (*UserItem, bool
 }
 
 func (repo *RepoPostgre) FindUser(login string) (bool, error) {
-	post := &UserItem{}
+	post := &models.UserItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT login FROM profile "+
@@ -90,18 +114,18 @@ func (repo *RepoPostgre) FindUser(login string) (bool, error) {
 }
 
 func (repo *RepoPostgre) GetUserProfileId(login string) (int64, error) {
-    var userID int64
+	var userID int64
 
-    err := repo.db.QueryRow(
-        "SELECT id FROM profile WHERE login = $1", login).Scan(&userID)
-    if err != nil {
-        if errors.Is(err, sql.ErrNoRows) {
-            return 0, fmt.Errorf("User not found for login: %s", login)
-        }
-        return 0, fmt.Errorf("GetUserProfileID error: %w", err)
-    }
+	err := repo.db.QueryRow(
+		"SELECT id FROM profile WHERE login = $1", login).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, fmt.Errorf("User not found for login: %s", login)
+		}
+		return 0, fmt.Errorf("GetUserProfileID error: %w", err)
+	}
 
-    return userID, nil
+	return userID, nil
 }
 
 func (repo *RepoPostgre) CreateUser(login string, password string, name string, birthDate string, email string) error {
@@ -116,36 +140,34 @@ func (repo *RepoPostgre) CreateUser(login string, password string, name string, 
 	return nil
 }
 
-func (repo *RepoPostgre) GetIdsAndPaths() ([]int32, []string, error) {
-    rows, err := repo.db.Query("SELECT id, photo FROM profile")
-    if err != nil {
-        return nil, nil, fmt.Errorf("GetIdsAndPaths query error: %w", err)
-    }
-    defer rows.Close()
+func (repo *RepoPostgre) GetNamesAndPaths(ids []int32) ([]string, []string, error) {
+	var s strings.Builder
+	s.WriteString("SELECT login, photo FROM profile WHERE id = ANY ($1::INTEGER[])")
 
-    var ids []int32
-    var paths []string
+	rows, err := repo.db.Query(s.String(), pq.Array(ids))
+	if err != nil {
+		return nil, nil, fmt.Errorf("GetMatchingNamesAndPaths query error: %w", err)
+	}
+	defer rows.Close()
 
-    for rows.Next() {
-        var id int32
-        var path string
-        if err := rows.Scan(&id, &path); err != nil {
-            return nil, nil, fmt.Errorf("GetIdsAndPaths scan error: %w", err)
-        }
-        ids = append(ids, id)
-        paths = append(paths, path)
-    }
+	var names []string
+	var paths []string
 
-    if err := rows.Err(); err != nil {
-        return nil, nil, fmt.Errorf("GetIdsAndPaths rows error: %w", err)
-    }
+	for rows.Next() {
+		var name string
+		var path string
+		if err := rows.Scan(&name, &path); err != nil {
+			return nil, nil, fmt.Errorf("GetMatchingNamesAndPaths scan error: %w", err)
+		}
+		names = append(names, name)
+		paths = append(paths, path)
+	}
 
-    return ids, paths, nil
+	return names, paths, nil
 }
 
-
-func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
-	post := &UserItem{}
+func (repo *RepoPostgre) GetUserProfile(login string) (*models.UserItem, error) {
+	post := &models.UserItem{}
 
 	err := repo.db.QueryRow(
 		"SELECT name, birth_date, login, email, photo FROM profile "+
@@ -158,32 +180,85 @@ func (repo *RepoPostgre) GetUserProfile(login string) (*UserItem, error) {
 }
 
 func (repo *RepoPostgre) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
-	if photo == "" {
-		_, err := repo.db.Exec("UPDATE profile "+
-			"SET login = $1, email = $2, birth_date = $3 "+
-			"WHERE login = $4", login, email, birthDate, prevLogin)
-		if err != nil {
-			return fmt.Errorf("failed to edit profile in db: %w", err)
-		}
-		return nil
+	var s strings.Builder
+	paramNum := 1
+	var params []interface{}
 
+	s.WriteString("UPDATE profile SET ")
+
+	if login != "" {
+		s.WriteString("login = $" + strconv.Itoa(paramNum))
+		paramNum++
+		params = append(params, login)
 	}
-
-	if password == "" {
-		_, err := repo.db.Exec("UPDATE profile "+
-			"SET login = $1, photo = $2, email = $3, birth_date = $4 "+
-			"WHERE login = $5", login, photo, email, birthDate, prevLogin)
-		if err != nil {
-			return fmt.Errorf("failed to edit profile in db: %w", err)
+	if photo != "" {
+		if paramNum != 1 {
+			s.WriteString(", ")
 		}
-		return nil
+		s.WriteString("photo = $" + strconv.Itoa(paramNum))
+		paramNum++
+		params = append(params, photo)
 	}
-
-	_, err := repo.db.Exec("UPDATE profile "+
-		"SET login = $1, password = $2, photo = $3, email = $4, birth_date = $5 "+
-		"WHERE login = $6", login, password, photo, email, birthDate, prevLogin)
+	if email != "" {
+		if paramNum != 1 {
+			s.WriteString(", ")
+		}
+		s.WriteString("email = $" + strconv.Itoa(paramNum))
+		paramNum++
+		params = append(params, email)
+	}
+	if password != "" {
+		if paramNum != 1 {
+			s.WriteString(", ")
+		}
+		s.WriteString("password = $" + strconv.Itoa(paramNum))
+		paramNum++
+		params = append(params, password)
+	}
+	if birthDate != "" {
+		if paramNum != 1 {
+			s.WriteString(", ")
+		}
+		s.WriteString("birth_date = $" + strconv.Itoa(paramNum))
+		paramNum++
+		params = append(params, birthDate)
+	}
+	s.WriteString(" WHERE login = $" + strconv.Itoa(paramNum))
+	params = append(params, prevLogin)
+	_, err := repo.db.Exec(s.String(), params...)
 	if err != nil {
 		return fmt.Errorf("failed to edit profile in db: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *RepoPostgre) GetUserRole(login string) (string, error) {
+	var role string
+
+	err := repo.db.QueryRow("SELECT role FROM profile WHERE login = $1", login).Scan(&role)
+	if err != nil {
+		return "", fmt.Errorf("get user role err: %w", err)
+	}
+
+	return role, nil
+}
+
+func (repo *RepoPostgre) IsSubscribed(login string) (bool, error) {
+	var isSubcribed bool
+
+	err := repo.db.QueryRow("SELECT profile.is_subsсribed FROM profile WHERE login = $1", login).Scan(&isSubcribed)
+	if err != nil {
+		return false, fmt.Errorf("is subscribed err: %w", err)
+	}
+
+	return isSubcribed, nil
+}
+
+func (repo *RepoPostgre) ChangeSubsribe(login string, isSubscribed bool) error {
+	_, err := repo.db.Exec("UPDATE profile SET is_subsсribed = $1 WHERE login = $2", isSubscribed, login)
+	if err != nil {
+		return fmt.Errorf("change subscribe error: %w", err)
 	}
 
 	return nil

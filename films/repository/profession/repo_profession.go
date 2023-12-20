@@ -11,6 +11,8 @@ import (
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
 
+//go:generate mockgen -source=repo_profession.go -destination=../../mocks/profession_repo_mock.go -package=mocks
+
 type IProfessionRepo interface {
 	GetActorsProfessions(actorId uint64) ([]models.ProfessionItem, error)
 }
@@ -19,7 +21,7 @@ type RepoPostgre struct {
 	db *sql.DB
 }
 
-func GetProfessionRepo(config configs.DbDsnCfg, lg *slog.Logger) (*RepoPostgre, error) {
+func GetProfessionRepo(config *configs.DbDsnCfg, lg *slog.Logger) (*RepoPostgre, error) {
 	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
 		config.User, config.DbName, config.Password, config.Host, config.Port, config.Sslmode)
 	db, err := sql.Open("pgx", dsn)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,24 +16,31 @@ import (
 	_ "github.com/jackc/pgx/stdlib"
 )
 
+//go:generate mockgen -source=repo_film.go -destination=../../mocks/film_repo_mock.go -package=mocks
+
 type IFilmsRepo interface {
 	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
 	GetFilm(filmId uint64) (*models.FilmItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
 	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 	) ([]models.FilmItem, error)
-	GetFavoriteFilms(userId uint64) ([]models.FilmItem, error)
+	GetFavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	AddFavoriteFilm(userId uint64, filmId uint64) error
 	RemoveFavoriteFilm(userId uint64, filmId uint64) error
+	CheckFilm(userId uint64, filmId uint64) (bool, error)
+	AddRating(filmId uint64, userId uint64, rating uint16) error
+	HasUsersRating(userId uint64, filmId uint64) (bool, error)
+	AddFilm(film models.FilmItem) error
+	GetFilmId(title string) (uint64, error)
 }
 
 type RepoPostgre struct {
 	db *sql.DB
 }
 
-func GetFilmRepo(config configs.DbDsnCfg, lg *slog.Logger) (*RepoPostgre, error) {
+func GetFilmRepo(config *configs.DbDsnCfg, lg *slog.Logger) (*RepoPostgre, error) {
 	dsn := fmt.Sprintf("user=%s dbname=%s password= %s host=%s port=%d sslmode=%s",
 		config.User, config.DbName, config.Password, config.Host, config.Port, config.Sslmode)
 	db, err := sql.Open("pgx", dsn)
@@ -119,7 +127,7 @@ func (repo *RepoPostgre) GetFilms(start uint64, end uint64) ([]models.FilmItem, 
 func (repo *RepoPostgre) GetFilm(filmId uint64) (*models.FilmItem, error) {
 	film := &models.FilmItem{}
 	err := repo.db.QueryRow(
-		"SELECT * FROM film "+
+		"SELECT id, title, info, poster, release_date, country, mpaa FROM film "+
 			"WHERE id = $1", filmId).
 		Scan(&film.Id, &film.Title, &film.Info, &film.Poster, &film.ReleaseDate, &film.Country, &film.Mpaa)
 	if err != nil {
@@ -150,44 +158,92 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 }
 
 func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []string, actors []string,
+	ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
 ) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
+	var hasWhere bool
+	paramNum := 1
+	var params []interface{}
 	var s strings.Builder
 	s.WriteString(
 		"SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film " +
 			"JOIN films_genre ON film.id = films_genre.id_film " +
-			"JOIN genre ON genre.id = films_genre.id_genre " +
 			"JOIN users_comment ON film.id = users_comment.id_film " +
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
-			"JOIN crew ON person_in_film.id_person = crew.id WHERE ")
+			"JOIN crew ON person_in_film.id_person = crew.id ")
 	if title != "" {
-		s.WriteString("fts @@ to_tsquery($5) AND ")
+		s.WriteString("WHERE ")
+		hasWhere = true
+		s.WriteString("fts @@ to_tsquery($" + strconv.Itoa(paramNum) + ") ")
+		paramNum++
+		params = append(params, title)
 	}
 	if dateFrom != "" {
-		s.WriteString("release_date >= '$6' AND ")
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("release_date >= $" + strconv.Itoa(paramNum) + " ")
+		paramNum++
+		params = append(params, dateFrom)
 	}
 	if dateTo != "" {
-		s.WriteString("release_date <= '$7' AND ")
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("release_date <= $" + strconv.Itoa(paramNum) + " ")
+		paramNum++
+		params = append(params, dateTo)
 	}
 	if mpaa != "" {
-		s.WriteString("mpaa = $8 AND ")
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("mpaa = $" + strconv.Itoa(paramNum) + " ")
+		paramNum++
+		params = append(params, mpaa)
+	}
+	if len(genres) > 0 {
+		if !hasWhere {
+			s.WriteString("WHERE ")
+			hasWhere = true
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("(CASE WHEN array_length($" + strconv.Itoa(paramNum) + "::int[], 1)> 0 " +
+			"THEN films_genre.id_genre = ANY ($" + strconv.Itoa(paramNum) + "::int[]) ELSE TRUE END) ")
+		paramNum++
+		params = append(params, pq.Array(genres))
+	}
+	if actors[0] != "" {
+		if !hasWhere {
+			s.WriteString("WHERE ")
+		} else {
+			s.WriteString("AND ")
+		}
+		s.WriteString("(CASE WHEN array_length($" + strconv.Itoa(paramNum) + "::varchar[], 1)> 0 " +
+			"THEN crew.name = ANY ($" + strconv.Itoa(paramNum) + "::varchar[]) ELSE TRUE END) ")
+		paramNum++
+		params = append(params, pq.Array(actors))
 	}
 	s.WriteString(
-		"(CASE WHEN array_length($1::varchar[], 1)> 0 " +
-			"THEN genre.title = ANY ($1::varchar[]) ELSE TRUE END) AND (CASE " +
-			"WHEN array_length($2::varchar[], 1)> 0 " +
-			"THEN crew.name = ANY ($2::varchar[]) ELSE TRUE END) " +
-
-			"GROUP BY film.title, film.id, genre.title " +
-			"HAVING AVG(users_comment.rating) > $3 AND AVG(users_comment.rating) < $4 " +
+		"GROUP BY film.title, film.id " +
+			"HAVING AVG(users_comment.rating) >= $" + strconv.Itoa(paramNum) + " AND AVG(users_comment.rating) <= $" + strconv.Itoa(paramNum+1) + " " +
 			"ORDER BY film.title")
 
-	rows, err := repo.db.Query(s.String(),
-		pq.Array(genres), pq.Array(actors), ratingFrom, ratingTo, title, dateFrom, dateTo, mpaa)
+	params = append(params, ratingFrom, ratingTo)
+	rows, err := repo.db.Query(s.String(), params...)
 
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err != nil {
 		return nil, fmt.Errorf("find film err: %w", err)
 	}
 	defer rows.Close()
@@ -204,13 +260,14 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	return films, nil
 }
 
-func (repo *RepoPostgre) GetFavoriteFilms(userId uint64) ([]models.FilmItem, error) {
+func (repo *RepoPostgre) GetFavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error) {
 	films := []models.FilmItem{}
 
 	rows, err := repo.db.Query(
 		"SELECT film.title, film.id, film.poster FROM film "+
 			"JOIN users_favorite_film ON film.id = users_favorite_film.id_film "+
-			"WHERE id_user = $1", userId)
+			"WHERE id_user = $1 "+
+			"OFFSET $2 LIMIT $3", userId, start, end)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("get favorite films err: %w", err)
 	}
@@ -218,7 +275,7 @@ func (repo *RepoPostgre) GetFavoriteFilms(userId uint64) ([]models.FilmItem, err
 
 	for rows.Next() {
 		post := models.FilmItem{}
-		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		err := rows.Scan(&post.Title, &post.Id, &post.Poster)
 		if err != nil {
 			return nil, fmt.Errorf("get favorite films scan err: %w", err)
 		}
@@ -247,4 +304,66 @@ func (repo *RepoPostgre) RemoveFavoriteFilm(userId uint64, filmId uint64) error 
 	}
 
 	return nil
+}
+
+func (repo *RepoPostgre) CheckFilm(userId uint64, filmId uint64) (bool, error) {
+	film := models.FilmItem{}
+	err := repo.db.QueryRow("SELECT id_film FROM users_favorite_film WHERE id_film = $1 AND id_user = $2", filmId, userId).Scan(&film.Id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("GetFilm err: %w", err)
+	}
+
+	return true, nil
+}
+
+func (repo *RepoPostgre) AddRating(filmId uint64, userId uint64, rating uint16) error {
+	_, err := repo.db.Exec(
+		"INSERT INTO users_comment(id_film, rating, id_user) "+
+			"VALUES($1, $2, $3)", filmId, rating, userId)
+	if err != nil {
+		return fmt.Errorf("AddComment: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *RepoPostgre) HasUsersRating(userId uint64, filmId uint64) (bool, error) {
+	var id uint64
+	err := repo.db.QueryRow(
+		"SELECT id_user FROM users_comment "+
+			"WHERE id_user = $1 AND id_film = $2", userId, filmId).Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+
+		return false, fmt.Errorf("has users rating: %w", err)
+	}
+
+	return true, nil
+}
+
+func (repo *RepoPostgre) AddFilm(film models.FilmItem) error {
+	_, err := repo.db.Exec("INSERT INTO film(title, info, poster, release_date, country, mpaa) "+
+		"VALUES($1, $2, $3, $4, $5, $6)",
+		film.Title, film.Info, film.Poster, film.ReleaseDate, film.Country, film.Mpaa)
+	if err != nil {
+		return fmt.Errorf("add film error: %w", err)
+	}
+
+	return nil
+}
+
+func (repo *RepoPostgre) GetFilmId(title string) (uint64, error) {
+	var id uint64
+	err := repo.db.QueryRow("SELECT id FROM film WHERE title = $1", title).Scan(&id)
+	if err != nil {
+		return 0, fmt.Errorf("get film id err: %w", err)
+	}
+
+	return id, nil
 }

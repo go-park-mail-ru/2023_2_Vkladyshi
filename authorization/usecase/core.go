@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
@@ -9,18 +10,41 @@ import (
 	"sync"
 	"time"
 
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/csrf"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/profile"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/repository/session"
 	"github.com/go-park-mail-ru/2023_2_Vkladyshi/configs"
-	"github.com/go-park-mail-ru/2023_2_Vkladyshi/errors"
+	"github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
 )
+
+type ICore interface {
+	CreateSession(ctx context.Context, login string) (string, session.Session, error)
+	KillSession(ctx context.Context, sid string) error
+	FindActiveSession(ctx context.Context, sid string) (bool, error)
+	CreateUserAccount(login string, password string, name string, birthDate string, email string) error
+	FindUserAccount(login string, password string) (*models.UserItem, bool, error)
+	FindUserByLogin(login string) (bool, error)
+	GetUserName(ctx context.Context, sid string) (string, error)
+	GetUserProfile(login string) (*models.UserItem, error)
+	EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error
+	CheckCsrfToken(ctx context.Context, token string) (bool, error)
+	CreateCsrfToken(ctx context.Context) (string, error)
+	CheckPassword(login string, password string) (bool, error)
+	GetUserRole(login string) (string, error)
+	Subscribe(userName string) (bool, error)
+	IsSubscribed(userName string) (bool, error)
+}
 
 type Core struct {
 	sessions   session.SessionRepo
 	mutex      sync.RWMutex
 	lg         *slog.Logger
 	users      profile.IUserRepo
+	csrfTokens csrf.CsrfRepo
 }
+
+var InvalideEmail = errors.New("invalide email")
+var LostConnection = errors.New("Redis connection lost")
 
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -38,12 +62,28 @@ func GetCore(cfg_sql *configs.DbDsnCfg, cfg_csrf configs.DbRedisCfg, cfg_session
 		return nil, err
 	}
 
+	csrf, err := csrf.GetCsrfRepo(cfg_csrf, lg)
+	if err != nil {
+		lg.Error("Csrf repository is not responding")
+		return nil, err
+	}
+
 	core := Core{
 		sessions:   *session,
 		lg:         lg.With("module", "core"),
 		users:      users,
+		csrfTokens: *csrf,
 	}
 	return &core, nil
+}
+
+func (core *Core) CheckPassword(login string, password string) (bool, error) {
+	found, err := core.users.CheckUserPassword(login, password)
+	if err != nil {
+		core.lg.Error("find user error", "err", err.Error())
+		return false, fmt.Errorf("FindUserAccount err: %w", err)
+	}
+	return found, nil
 }
 
 func (core *Core) EditProfile(prevLogin string, login string, password string, email string, birthDate string, photo string) error {
@@ -118,7 +158,7 @@ func (core *Core) KillSession(ctx context.Context, sid string) error {
 
 func (core *Core) CreateUserAccount(login string, password string, name string, birthDate string, email string) error {
 	if matched, _ := regexp.MatchString(`@`, email); !matched {
-		return errors.InvalideEmail
+		return InvalideEmail
 	}
 	err := core.users.CreateUser(login, password, name, birthDate, email)
 	if err != nil {
@@ -129,7 +169,7 @@ func (core *Core) CreateUserAccount(login string, password string, name string, 
 	return nil
 }
 
-func (core *Core) FindUserAccount(login string, password string) (*profile.UserItem, bool, error) {
+func (core *Core) FindUserAccount(login string, password string) (*models.UserItem, bool, error) {
 	user, found, err := core.users.GetUser(login, password)
 	if err != nil {
 		core.lg.Error("find user error", "err", err.Error())
@@ -156,7 +196,7 @@ func RandStringRunes(seed int) string {
 	return string(symbols)
 }
 
-func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
+func (core *Core) GetUserProfile(login string) (*models.UserItem, error) {
 	profile, err := core.users.GetUserProfile(login)
 	if err != nil {
 		core.lg.Error("GetUserProfile error", "err", err.Error())
@@ -166,3 +206,75 @@ func (core *Core) GetUserProfile(login string) (*profile.UserItem, error) {
 	return profile, nil
 }
 
+func (core *Core) CheckCsrfToken(ctx context.Context, token string) (bool, error) {
+	core.mutex.RLock()
+	found, err := core.csrfTokens.CheckActiveCsrf(ctx, token, core.lg)
+	core.mutex.RUnlock()
+
+	if err != nil {
+		return false, err
+	}
+
+	return found, err
+}
+
+func (core *Core) CreateCsrfToken(ctx context.Context) (string, error) {
+	sid := RandStringRunes(32)
+
+	core.mutex.Lock()
+	csrfAdded, err := core.csrfTokens.AddCsrf(
+		ctx,
+		models.Csrf{
+			SID:       sid,
+			ExpiresAt: time.Now().Add(3 * time.Hour),
+		},
+		core.lg,
+	)
+	core.mutex.Unlock()
+
+	if !csrfAdded && err != nil {
+		return "", err
+	}
+
+	if !csrfAdded {
+		return "", nil
+	}
+
+	return sid, nil
+}
+
+func (core *Core) GetUserRole(login string) (string, error) {
+	role, err := core.users.GetUserRole(login)
+	if err != nil {
+		core.lg.Error("get user role error", "err", err.Error())
+		return "", fmt.Errorf("get user role err: %w", err)
+	}
+
+	return role, nil
+}
+
+func (core *Core) Subscribe(userName string) (bool, error) {
+	isSubcribed, err := core.users.IsSubscribed(userName)
+	if err != nil {
+		core.lg.Error("is subsribed error", "err", err.Error())
+		return false, fmt.Errorf("")
+	}
+
+	err = core.users.ChangeSubsribe(userName, !isSubcribed)
+	if err != nil {
+		core.lg.Error("change subscribe error", "err", err.Error())
+		return false, fmt.Errorf("")
+	}
+
+	return !isSubcribed, nil
+}
+
+func (core *Core) IsSubscribed(userName string) (bool, error) {
+	isSubcribed, err := core.users.IsSubscribed(userName)
+	if err != nil {
+		core.lg.Error("is subcsribed error", "err", err.Error())
+		return false, fmt.Errorf("")
+	}
+
+	return isSubcribed, nil
+}
