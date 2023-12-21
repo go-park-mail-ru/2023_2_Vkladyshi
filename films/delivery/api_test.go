@@ -443,19 +443,24 @@ func TestCalendar(t *testing.T) {
 		Days:      nil,
 	}
 
-	testCases := map[string]struct {
+	testCases := [] struct {
+		name   string
 		method string
 		result *requests.Response
 	}{
-		"Bad method": {
+		{
+			name:   "Bad method",
 			method: http.MethodPost,
 			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
 		},
-		"Core error": {
+
+		{
+			name:   "Core error",
 			method: http.MethodGet,
 			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
 		},
-		"Ok": {
+		{
+			name:   "Ok",
 			method: http.MethodGet,
 			result: getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectedResponse}),
 		},
