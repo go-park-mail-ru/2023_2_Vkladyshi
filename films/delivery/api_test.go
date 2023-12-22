@@ -371,6 +371,7 @@ func TestFindActor(t *testing.T) {
 	actors := []models.Character{actorItem}
 	expectedResponse := requests.ActorsResponse{
 		Actors: actors,
+		Total:  1,
 	}
 
 	testCases := map[string]struct {
