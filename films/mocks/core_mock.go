@@ -152,33 +152,33 @@ func (mr *MockICoreMockRecorder) FavoriteFilmsRemove(userId, filmId interface{})
 }
 
 // FindActor mocks base method.
-func (m *MockICore) FindActor(name, birthDate string, films, career []string, country string) ([]models.Character, error) {
+func (m *MockICore) FindActor(name, birthDate string, films, career []string, country string, first, limit uint64) ([]models.Character, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindActor", name, birthDate, films, career, country)
+	ret := m.ctrl.Call(m, "FindActor", name, birthDate, films, career, country, first, limit)
 	ret0, _ := ret[0].([]models.Character)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindActor indicates an expected call of FindActor.
-func (mr *MockICoreMockRecorder) FindActor(name, birthDate, films, career, country interface{}) *gomock.Call {
+func (mr *MockICoreMockRecorder) FindActor(name, birthDate, films, career, country, first, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindActor", reflect.TypeOf((*MockICore)(nil).FindActor), name, birthDate, films, career, country)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindActor", reflect.TypeOf((*MockICore)(nil).FindActor), name, birthDate, films, career, country, first, limit)
 }
 
 // FindFilm mocks base method.
-func (m *MockICore) FindFilm(title, dateFrom, dateTo string, ratingFrom, ratingTo float32, mpaa string, genres []uint32, actors []string) ([]models.FilmItem, error) {
+func (m *MockICore) FindFilm(title, dateFrom, dateTo string, ratingFrom, ratingTo float32, mpaa string, genres []uint32, actors []string, first, limit uint64) ([]models.FilmItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindFilm", title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	ret := m.ctrl.Call(m, "FindFilm", title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 	ret0, _ := ret[0].([]models.FilmItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindFilm indicates an expected call of FindFilm.
-func (mr *MockICoreMockRecorder) FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors interface{}) *gomock.Call {
+func (mr *MockICoreMockRecorder) FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFilm", reflect.TypeOf((*MockICore)(nil).FindFilm), title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFilm", reflect.TypeOf((*MockICore)(nil).FindFilm), title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 }
 
 // GetActorInfo mocks base method.

@@ -37,6 +37,8 @@ type (
 		Mpaa       string   `json:"mpaa"`
 		Genres     []uint32 `json:"genres"`
 		Actors     []string `json:"actors"`
+		Page       uint64   `json:"page"`
+		PerPage    uint64   `json:"per_page"`
 	}
 
 	FindActorRequest struct {
@@ -45,5 +47,7 @@ type (
 		Career    []string `json:"amplua"`
 		Films     []string `json:"films"`
 		Country   string   `json:"country"`
+		Page      uint64   `json:"page"`
+		PerPage   uint64   `json:"per_page"`
 	}
 )

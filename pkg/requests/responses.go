@@ -47,6 +47,7 @@ type (
 
 	ActorsResponse struct {
 		Actors []models.Character `json:"actors"`
+		Total  uint64             `json:"total"`
 	}
 
 	CommentResponse struct {

@@ -337,9 +337,9 @@ func TestFindFilm(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockCore := mocks.NewMockICore(mockCtrl)
-	mockCore.EXPECT().FindFilm(string("t1"), string(""), string(""), float32(0), float32(0), string(""), nil, nil).Return(nil, fmt.Errorf("core_err")).Times(1)
-	mockCore.EXPECT().FindFilm(string("t2"), string(""), string(""), float32(0), float32(0), string(""), nil, nil).Return(nil, usecase.ErrNotFound).Times(1)
-	mockCore.EXPECT().FindFilm(string("t3"), string(""), string(""), float32(0), float32(0), string(""), nil, nil).Return(films, nil).Times(1)
+	mockCore.EXPECT().FindFilm(string("t1"), string(""), string(""), float32(0), float32(0), string(""), nil, nil, uint64(0), uint64(0)).Return(nil, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FindFilm(string("t2"), string(""), string(""), float32(0), float32(0), string(""), nil, nil, uint64(0), uint64(0)).Return(nil, usecase.ErrNotFound).Times(1)
+	mockCore.EXPECT().FindFilm(string("t3"), string(""), string(""), float32(0), float32(0), string(""), nil, nil, uint64(0), uint64(0)).Return(films, nil).Times(1)
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
@@ -395,12 +395,12 @@ func TestFindActor(t *testing.T) {
 		"not found error": {
 			method: http.MethodPost,
 			result: &requests.Response{Status: http.StatusNotFound, Body: nil},
-			body:   createActorBody(requests.FindActorRequest{Name: "n2", Career: nil, Films: nil}),
+			body:   createActorBody(requests.FindActorRequest{Name: "n2", Career: nil, Films: nil, Page: 2, PerPage: 1}),
 		},
 		"Ok": {
 			method: http.MethodPost,
 			result: getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectedResponse}),
-			body:   createActorBody(requests.FindActorRequest{Name: "n3", Career: nil, Films: nil}),
+			body:   createActorBody(requests.FindActorRequest{Name: "n3", Career: nil, Films: nil, Page: 1, PerPage: 1}),
 		},
 	}
 
@@ -408,9 +408,9 @@ func TestFindActor(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	mockCore := mocks.NewMockICore(mockCtrl)
-	mockCore.EXPECT().FindActor(string("n1"), string(""), nil, nil, string("")).Return(nil, fmt.Errorf("core_err")).Times(1)
-	mockCore.EXPECT().FindActor(string("n2"), string(""), nil, nil, string("")).Return(nil, usecase.ErrNotFound).Times(1)
-	mockCore.EXPECT().FindActor(string("n3"), string(""), nil, nil, string("")).Return(actors, nil).Times(1)
+	mockCore.EXPECT().FindActor(string("n1"), string(""), nil, nil, string(""), uint64(0), uint64(0)).Return(nil, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().FindActor(string("n2"), string(""), nil, nil, string(""), uint64(1), uint64(1)).Return(nil, usecase.ErrNotFound).Times(1)
+	mockCore.EXPECT().FindActor(string("n3"), string(""), nil, nil, string(""), uint64(0), uint64(1)).Return(actors, nil).Times(1)
 	var buff bytes.Buffer
 	logger := slog.New(slog.NewJSONHandler(&buff, nil))
 
@@ -443,21 +443,25 @@ func TestCalendar(t *testing.T) {
 		Days:      nil,
 	}
 
-	testCases := map[string]struct {
-		method string
-		result *requests.Response
+	testCases := []struct {
+		testName string
+		method   string
+		result   *requests.Response
 	}{
-		"Bad method": {
-			method: http.MethodPost,
-			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		{
+			testName: "Bad method",
+			method:   http.MethodPost,
+			result:   &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
 		},
-		"Core error": {
-			method: http.MethodGet,
-			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		{
+			testName: "Core error",
+			method:   http.MethodGet,
+			result:   &requests.Response{Status: http.StatusInternalServerError, Body: nil},
 		},
-		"Ok": {
-			method: http.MethodGet,
-			result: getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectedResponse}),
+		{
+			testName: "Ok",
+			method:   http.MethodGet,
+			result:   getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectedResponse}),
 		},
 	}
 

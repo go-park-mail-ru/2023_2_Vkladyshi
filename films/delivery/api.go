@@ -67,7 +67,6 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	if r.Method != http.MethodGet {
-		fmt.Println("nice")
 		response.Status = http.StatusMethodNotAllowed
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
@@ -203,8 +202,8 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
-
-	films, err := a.core.FindFilm(request.Title, request.DateFrom, request.DateTo, request.RatingFrom, request.RatingTo, request.Mpaa, request.Genres, request.Actors)
+	films, err := a.core.FindFilm(request.Title, request.DateFrom, request.DateTo, request.RatingFrom, request.RatingTo,
+		request.Mpaa, request.Genres, request.Actors, (request.Page-1)*request.PerPage, request.PerPage)
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
@@ -371,7 +370,7 @@ func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actors, err := a.core.FindActor(request.Name, request.BirthDate, request.Films, request.Career, request.Country)
+	actors, err := a.core.FindActor(request.Name, request.BirthDate, request.Films, request.Career, request.Country, (request.Page-1)*request.PerPage, request.PerPage)
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
@@ -387,6 +386,7 @@ func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
 
 	actorsResponse := requests.ActorsResponse{
 		Actors: actors,
+		Total:  uint64(len(actors)),
 	}
 	response.Body = actorsResponse
 
