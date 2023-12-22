@@ -50,4 +50,14 @@ type (
 		Page      uint64   `json:"page"`
 		PerPage   uint64   `json:"per_page"`
 	}
+
+	ChangeRoleRequest struct {
+		Login string `json:"login"`
+		Role  string `json:"role"`
+	}
+
+	DeleteCommentRequest struct {
+		IdUser    uint64 `json:"userId"`
+		IdComment uint64 `json:"commentId"`
+	}
 )

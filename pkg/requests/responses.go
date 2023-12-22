@@ -77,6 +77,10 @@ type (
 	SubcribeResponse struct {
 		IsSubcribed bool `json:"subscribe"`
 	}
+
+	UsersResponse struct {
+		Users []models.UserItem `json:"users"`
+	}
 )
 
 type Collector struct {
