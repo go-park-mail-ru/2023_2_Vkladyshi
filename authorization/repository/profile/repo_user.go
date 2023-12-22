@@ -27,6 +27,8 @@ type IUserRepo interface {
 	GetUserRole(login string) (string, error)
 	IsSubscribed(login string) (bool, error)
 	ChangeSubsribe(login string, isSubscribed bool) error
+	FindUsers(login string, role string, first, limit uint64) ([]models.UserItem, error)
+	ChangeUsersRole(login string, role string) error
 }
 
 type RepoPostgre struct {
