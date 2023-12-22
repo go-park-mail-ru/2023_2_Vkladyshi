@@ -308,3 +308,12 @@ func (repo *RepoPostgre) FindUsers(login string, role string, first, limit uint6
 
 	return users, nil
 }
+
+func (repo *RepoPostgre) ChangeUsersRole(login string, role string) error {
+	_, err := repo.db.Exec("UPDATE profile SET role = $1 WHERE login = $2", role, login)
+	if err != nil {
+		return fmt.Errorf("change user role error: %w", err)
+	}
+
+	return nil
+}
