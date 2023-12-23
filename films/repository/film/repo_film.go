@@ -35,6 +35,7 @@ type IFilmsRepo interface {
 	AddFilm(film models.FilmItem) error
 	GetFilmId(title string) (uint64, error)
 	DeleteRating(idUser uint64, idFilm uint64) error
+	Trends() ([]models.FilmItem, error)
 }
 
 type RepoPostgre struct {
@@ -382,4 +383,30 @@ func (repo *RepoPostgre) DeleteRating(idUser uint64, idFilm uint64) error {
 		return fmt.Errorf("delete rating err: %w", err)
 	}
 	return nil
+}
+
+func (repo *RepoPostgre) Trends() ([]models.FilmItem, error) {
+	trends := []models.FilmItem{}
+
+	rows, err := repo.db.Query("SELECT film.id, film.title, film.poster FROM film " +
+		"JOIN users_comment ON film.id = users_comment.id_film " +
+		"WHERE users_comment.date > (CURRENT_TIMESTAMP - interval'48 hours') " +
+		"GROUP BY film.title, film.id, film.poster " +
+		"ORDER BY COUNT(users_comment.id_film) DESC " +
+		"LIMIT 5")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("trends err: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		post := models.FilmItem{}
+		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		if err != nil {
+			return nil, fmt.Errorf("trends scan err: %w", err)
+		}
+		trends = append(trends, post)
+	}
+
+	return trends, nil
 }
