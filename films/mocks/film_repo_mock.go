@@ -239,18 +239,3 @@ func (mr *MockIFilmsRepoMockRecorder) RemoveFavoriteFilm(userId, filmId interfac
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveFavoriteFilm", reflect.TypeOf((*MockIFilmsRepo)(nil).RemoveFavoriteFilm), userId, filmId)
 }
-
-// Trends mocks base method.
-func (m *MockIFilmsRepo) Trends() ([]models.FilmItem, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Trends")
-	ret0, _ := ret[0].([]models.FilmItem)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Trends indicates an expected call of Trends.
-func (mr *MockIFilmsRepoMockRecorder) Trends() *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trends", reflect.TypeOf((*MockIFilmsRepo)(nil).Trends))
-}
