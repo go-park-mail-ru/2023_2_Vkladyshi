@@ -57,7 +57,7 @@ type (
 	}
 
 	DeleteCommentRequest struct {
-		IdUser    uint64 `json:"userId"`
-		IdComment uint64 `json:"commentId"`
+		IdUser    uint64 `json:"user_id"`
+		IdFilm uint64 `json:"film_id"`
 	}
 )

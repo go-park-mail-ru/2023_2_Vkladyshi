@@ -1366,10 +1366,10 @@ func easyjson11d1a9baDecodeGithubComGoParkMailRu20232VkladyshiPkgRequests11(in *
 			continue
 		}
 		switch key {
-		case "userId":
+		case "user_id":
 			out.IdUser = uint64(in.Uint64())
-		case "commentId":
-			out.IdComment = uint64(in.Uint64())
+		case "film_id":
+			out.IdFilm = uint64(in.Uint64())
 		default:
 			in.SkipRecursive()
 		}
@@ -1385,14 +1385,14 @@ func easyjson11d1a9baEncodeGithubComGoParkMailRu20232VkladyshiPkgRequests11(out 
 	first := true
 	_ = first
 	{
-		const prefix string = ",\"userId\":"
+		const prefix string = ",\"user_id\":"
 		out.RawString(prefix[1:])
 		out.Uint64(uint64(in.IdUser))
 	}
 	{
-		const prefix string = ",\"commentId\":"
+		const prefix string = ",\"film_id\":"
 		out.RawString(prefix)
-		out.Uint64(uint64(in.IdComment))
+		out.Uint64(uint64(in.IdFilm))
 	}
 	out.RawByte('}')
 }

@@ -684,7 +684,7 @@ func (a *API) DeleteRating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = a.core.DeleteRating(request.IdUser, request.IdComment)
+	err = a.core.DeleteRating(request.IdUser, request.IdFilm)
 	if err != nil {
 		response.Status = http.StatusBadRequest
 		a.ct.SendResponse(w, r, response, a.lg, start)
