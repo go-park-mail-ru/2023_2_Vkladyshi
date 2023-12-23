@@ -17,7 +17,6 @@ import (
 )
 
 //go:generate mockgen -source=repo_film.go -destination=../../mocks/film_repo_mock.go -package=mocks
-
 type IFilmsRepo interface {
 	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
@@ -36,6 +35,7 @@ type IFilmsRepo interface {
 	GetFilmId(title string) (uint64, error)
 	DeleteRating(idUser uint64, idFilm uint64) error
 	Trends() ([]models.FilmItem, error)
+	GetLasts(ids []uint64) ([]models.FilmItem, error)
 }
 
 type RepoPostgre struct {
@@ -409,4 +409,28 @@ func (repo *RepoPostgre) Trends() ([]models.FilmItem, error) {
 	}
 
 	return trends, nil
+}
+
+func (repo *RepoPostgre) GetLasts(ids []uint64) ([]models.FilmItem, error) {
+	films := []models.FilmItem{}
+
+	rows, err := repo.db.Query("SELECT id, title, poster FROM film "+
+		"WHERE (CASE WHEN array_length($1::int[], 1)> 0 "+
+		"THEN id = ANY ($1::int[]) ELSE FALSE END) "+
+		"ORDER BY array_position($1::int[], id)", ids)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("get lasts err: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		post := models.FilmItem{}
+		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		if err != nil {
+			return nil, fmt.Errorf("get lasts scan err: %w", err)
+		}
+		films = append(films, post)
+	}
+
+	return films, nil
 }

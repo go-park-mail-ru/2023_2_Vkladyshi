@@ -53,6 +53,7 @@ type ICore interface {
 	AddNearFilm(ctx context.Context, active models.NearFilm, lg *slog.Logger) (bool, error)
 	UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error)
 	Trends() ([]models.FilmItem, error)
+	GetLastSeen([]models.NearFilm) ([]models.FilmItem, error)
 }
 
 type Core struct {
@@ -450,4 +451,23 @@ func (core *Core) Trends() ([]models.FilmItem, error) {
 	}
 
 	return trends, nil
+}
+
+func (core *Core) GetLastSeen(filmsIds []models.NearFilm) ([]models.FilmItem, error) {
+	ids := make([]uint64, len(filmsIds))
+	for _, id := range filmsIds {
+		ids = append(ids, id.IdFilm)
+	}
+
+	films, err := core.films.GetLasts(ids)
+	if err != nil {
+		core.lg.Error("trends error", "err", err.Error())
+		return nil, fmt.Errorf("trends err: %w", err)
+	}
+
+	if len(films) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return films, nil
 }

@@ -302,6 +302,21 @@ func (mr *MockICoreMockRecorder) GetGenre(genreId interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGenre", reflect.TypeOf((*MockICore)(nil).GetGenre), genreId)
 }
 
+// GetLastSeen mocks base method.
+func (m *MockICore) GetLastSeen(arg0 []models.NearFilm) ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLastSeen", arg0)
+	ret0, _ := ret[0].([]models.FilmItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLastSeen indicates an expected call of GetLastSeen.
+func (mr *MockICoreMockRecorder) GetLastSeen(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastSeen", reflect.TypeOf((*MockICore)(nil).GetLastSeen), arg0)
+}
+
 // GetNearFilms mocks base method.
 func (m *MockICore) GetNearFilms(ctx context.Context, userId uint64, lg *slog.Logger) ([]models.NearFilm, error) {
 	m.ctrl.T.Helper()

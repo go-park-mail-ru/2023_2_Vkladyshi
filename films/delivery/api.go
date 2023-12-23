@@ -54,6 +54,7 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	api.mx.Handle("/api/v1/rating/delete", middleware.AuthCheck(http.HandlerFunc(api.DeleteRating), c, l))
 	api.mx.Handle("/api/v1/statistics", middleware.AuthCheck(http.HandlerFunc(api.UsersStatistics), c, l))
 	api.mx.HandleFunc("/api/v1/trends", api.Trends)
+	api.mx.Handle("/api/v1/lasts", middleware.AuthCheck(http.HandlerFunc(api.LastSeen), c, l))
 
 	return api
 }
@@ -166,7 +167,6 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 		a.lg.Error("Failed to add near film", "error", err.Error())
 		return
 	}
-
 }
 
 func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
@@ -766,5 +766,47 @@ func (a *API) Trends(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response.Body = trendsResponse
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) LastSeen(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	userId := r.Context().Value(middleware.UserIDKey).(uint64)
+
+	filmsIds, err := a.core.GetNearFilms(r.Context(), userId, a.lg)
+	if err != nil {
+		a.lg.Error("last seen error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	films, err := a.core.GetLastSeen(filmsIds)
+	if err != nil {
+		if errors.Is(err, usecase.ErrNotFound) {
+			response.Status = http.StatusNotFound
+			a.ct.SendResponse(w, r, response, a.lg, start)
+			return
+		}
+		a.lg.Error("last seen error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	filmsResponse := requests.FilmsResponse{
+		Films: films,
+		Total: uint64(len(films)),
+	}
+
+	response.Body = filmsResponse
 	a.ct.SendResponse(w, r, response, a.lg, start)
 }
