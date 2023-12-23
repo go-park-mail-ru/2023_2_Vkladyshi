@@ -52,6 +52,8 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	api.mx.Handle("/api/v1/rating/add", middleware.AuthCheck(http.HandlerFunc(api.AddRating), c, l))
 	api.mx.HandleFunc("/api/v1/add/film", api.AddFilm)
 	api.mx.Handle("/api/v1/rating/delete", middleware.AuthCheck(http.HandlerFunc(api.DeleteRating), c, l))
+	api.mx.Handle("/api/v1/statistics", middleware.AuthCheck(http.HandlerFunc(api.UsersStatistics), c, l))
+	api.mx.HandleFunc("/api/v1/trends", api.Trends)
 
 	return api
 }
@@ -690,5 +692,55 @@ func (a *API) DeleteRating(w http.ResponseWriter, r *http.Request) {
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) UsersStatistics(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	userId := r.Context().Value(middleware.UserIDKey).(uint64)
+
+	stats, err := a.core.UsersStatistics(userId)
+	if err != nil {
+		a.lg.Error("users statistics error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	response.Body = stats
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) Trends(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	trends, err := a.core.Trends()
+	if err != nil {
+		a.lg.Error("trends error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+	trendsResponse := requests.FilmsResponse{
+		Films: trends,
+		Total: uint64(len(trends)),
+	}
+
+	response.Body = trendsResponse
 	a.ct.SendResponse(w, r, response, a.lg, start)
 }

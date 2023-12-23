@@ -300,3 +300,33 @@ func (mr *MockICoreMockRecorder) GetUserId(ctx, sid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserId", reflect.TypeOf((*MockICore)(nil).GetUserId), ctx, sid)
 }
+
+// Trends mocks base method.
+func (m *MockICore) Trends() ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Trends")
+	ret0, _ := ret[0].([]models.FilmItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Trends indicates an expected call of Trends.
+func (mr *MockICoreMockRecorder) Trends() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trends", reflect.TypeOf((*MockICore)(nil).Trends))
+}
+
+// UsersStatistics mocks base method.
+func (m *MockICore) UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UsersStatistics", idUser)
+	ret0, _ := ret[0].([]requests.UsersStatisticsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UsersStatistics indicates an expected call of UsersStatistics.
+func (mr *MockICoreMockRecorder) UsersStatistics(idUser interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsersStatistics", reflect.TypeOf((*MockICore)(nil).UsersStatistics), idUser)
+}

@@ -48,6 +48,8 @@ type ICore interface {
 	FavoriteActorsAdd(userId uint64, filmId uint64) error
 	FavoriteActorsRemove(userId uint64, filmId uint64) error
 	DeleteRating(idUser uint64, idFilm uint64) error
+	UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error)
+	Trends() ([]models.FilmItem, error)
 }
 
 type Core struct {
@@ -405,4 +407,24 @@ func (core *Core) DeleteRating(idUser uint64, idFilm uint64) error {
 	}
 
 	return nil
+}
+
+func (core *Core) UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error) {
+	stats, err := core.genres.UsersStatistics(idUser)
+	if err != nil {
+		core.lg.Error("users statistics error", "err", err.Error())
+		return nil, fmt.Errorf("users statistics err: %w", err)
+	}
+
+	return stats, nil
+}
+
+func (core *Core) Trends() ([]models.FilmItem, error) {
+	trends, err := core.films.Trends()
+	if err != nil {
+		core.lg.Error("trends error", "err", err.Error())
+		return nil, fmt.Errorf("trends err: %w", err)
+	}
+
+	return trends, nil
 }
