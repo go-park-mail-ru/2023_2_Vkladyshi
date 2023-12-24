@@ -200,10 +200,9 @@ func TestFilm(t *testing.T) {
 			q.Add(key, value)
 		}
 		r.URL.RawQuery = q.Encode()
-		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
 		w := httptest.NewRecorder()
 
-		api.Film(w, newReq)
+		api.Film(w, r)
 		response, err := getResponse(w)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)
