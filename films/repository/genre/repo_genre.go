@@ -130,7 +130,7 @@ func (repo *RepoPostgre) UsersStatistics(idUser uint64) ([]requests.UsersStatist
 		"JOIN films_genre ON film.id = films_genre.id_film "+
 		"JOIN genre ON genre.id = films_genre.id_genre "+
 		"WHERE id_user = $1 "+
-		"GROUP BY genre.title, id_user", idUser)
+		"GROUP BY genre.id", idUser)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("users stats err: %w", err)
 	}
