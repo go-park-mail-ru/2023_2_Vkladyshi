@@ -145,10 +145,10 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 
 	a.ct.SendResponse(w, r, response, a.lg, start)
 
-	userId, errAuth := r.Context().Value(middleware.UserIDKey).(uint64)
+	userId, isAuth := r.Context().Value(middleware.UserIDKey).(uint64)
 
-	if errAuth {
-		a.lg.Error("User StatusUnauthorized", "err", errAuth)
+	if !isAuth {
+		a.lg.Error("User StatusUnauthorized", "err", !isAuth)
 		return
 	}
 
