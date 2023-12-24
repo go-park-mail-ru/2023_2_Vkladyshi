@@ -417,7 +417,7 @@ func (repo *RepoPostgre) GetLasts(ids []uint64) ([]models.FilmItem, error) {
 	rows, err := repo.db.Query("SELECT id, title, poster FROM film "+
 		"WHERE (CASE WHEN array_length($1::int[], 1)> 0 "+
 		"THEN id = ANY ($1::int[]) ELSE FALSE END) "+
-		"ORDER BY array_position($1::int[], id)", ids)
+		"ORDER BY array_position($1::int[], id)", pq.Array(ids))
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("get lasts err: %w", err)
 	}
