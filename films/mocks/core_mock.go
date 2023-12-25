@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	slog "log/slog"
 	reflect "reflect"
 
 	models "github.com/go-park-mail-ru/2023_2_Vkladyshi/pkg/models"
@@ -50,6 +51,21 @@ func (mr *MockICoreMockRecorder) AddFilm(film, genres, actors interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddFilm", reflect.TypeOf((*MockICore)(nil).AddFilm), film, genres, actors)
 }
 
+// AddNearFilm mocks base method.
+func (m *MockICore) AddNearFilm(ctx context.Context, active models.NearFilm, lg *slog.Logger) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AddNearFilm", ctx, active, lg)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// AddNearFilm indicates an expected call of AddNearFilm.
+func (mr *MockICoreMockRecorder) AddNearFilm(ctx, active, lg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddNearFilm", reflect.TypeOf((*MockICore)(nil).AddNearFilm), ctx, active, lg)
+}
+
 // AddRating mocks base method.
 func (m *MockICore) AddRating(filmId, userId uint64, rating uint16) (bool, error) {
 	m.ctrl.T.Helper()
@@ -63,6 +79,20 @@ func (m *MockICore) AddRating(filmId, userId uint64, rating uint16) (bool, error
 func (mr *MockICoreMockRecorder) AddRating(filmId, userId, rating interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddRating", reflect.TypeOf((*MockICore)(nil).AddRating), filmId, userId, rating)
+}
+
+// DeleteRating mocks base method.
+func (m *MockICore) DeleteRating(idUser, idFilm uint64) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteRating", idUser, idFilm)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRating indicates an expected call of DeleteRating.
+func (mr *MockICoreMockRecorder) DeleteRating(idUser, idFilm interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRating", reflect.TypeOf((*MockICore)(nil).DeleteRating), idUser, idFilm)
 }
 
 // FavoriteActors mocks base method.
@@ -152,33 +182,33 @@ func (mr *MockICoreMockRecorder) FavoriteFilmsRemove(userId, filmId interface{})
 }
 
 // FindActor mocks base method.
-func (m *MockICore) FindActor(name, birthDate string, films, career []string, country string) ([]models.Character, error) {
+func (m *MockICore) FindActor(name, birthDate string, films, career []string, country string, first, limit uint64) ([]models.Character, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindActor", name, birthDate, films, career, country)
+	ret := m.ctrl.Call(m, "FindActor", name, birthDate, films, career, country, first, limit)
 	ret0, _ := ret[0].([]models.Character)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindActor indicates an expected call of FindActor.
-func (mr *MockICoreMockRecorder) FindActor(name, birthDate, films, career, country interface{}) *gomock.Call {
+func (mr *MockICoreMockRecorder) FindActor(name, birthDate, films, career, country, first, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindActor", reflect.TypeOf((*MockICore)(nil).FindActor), name, birthDate, films, career, country)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindActor", reflect.TypeOf((*MockICore)(nil).FindActor), name, birthDate, films, career, country, first, limit)
 }
 
 // FindFilm mocks base method.
-func (m *MockICore) FindFilm(title, dateFrom, dateTo string, ratingFrom, ratingTo float32, mpaa string, genres []uint32, actors []string) ([]models.FilmItem, error) {
+func (m *MockICore) FindFilm(title, dateFrom, dateTo string, ratingFrom, ratingTo float32, mpaa string, genres []uint32, actors []string, first, limit uint64) ([]models.FilmItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindFilm", title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	ret := m.ctrl.Call(m, "FindFilm", title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 	ret0, _ := ret[0].([]models.FilmItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindFilm indicates an expected call of FindFilm.
-func (mr *MockICoreMockRecorder) FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors interface{}) *gomock.Call {
+func (mr *MockICoreMockRecorder) FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFilm", reflect.TypeOf((*MockICore)(nil).FindFilm), title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFilm", reflect.TypeOf((*MockICore)(nil).FindFilm), title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 }
 
 // GetActorInfo mocks base method.
@@ -272,6 +302,36 @@ func (mr *MockICoreMockRecorder) GetGenre(genreId interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetGenre", reflect.TypeOf((*MockICore)(nil).GetGenre), genreId)
 }
 
+// GetLastSeen mocks base method.
+func (m *MockICore) GetLastSeen(arg0 []models.NearFilm) ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLastSeen", arg0)
+	ret0, _ := ret[0].([]models.FilmItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLastSeen indicates an expected call of GetLastSeen.
+func (mr *MockICoreMockRecorder) GetLastSeen(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLastSeen", reflect.TypeOf((*MockICore)(nil).GetLastSeen), arg0)
+}
+
+// GetNearFilms mocks base method.
+func (m *MockICore) GetNearFilms(ctx context.Context, userId uint64, lg *slog.Logger) ([]models.NearFilm, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetNearFilms", ctx, userId, lg)
+	ret0, _ := ret[0].([]models.NearFilm)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetNearFilms indicates an expected call of GetNearFilms.
+func (mr *MockICoreMockRecorder) GetNearFilms(ctx, userId, lg interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetNearFilms", reflect.TypeOf((*MockICore)(nil).GetNearFilms), ctx, userId, lg)
+}
+
 // GetUserId mocks base method.
 func (m *MockICore) GetUserId(ctx context.Context, sid string) (uint64, error) {
 	m.ctrl.T.Helper()
@@ -285,4 +345,34 @@ func (m *MockICore) GetUserId(ctx context.Context, sid string) (uint64, error) {
 func (mr *MockICoreMockRecorder) GetUserId(ctx, sid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserId", reflect.TypeOf((*MockICore)(nil).GetUserId), ctx, sid)
+}
+
+// Trends mocks base method.
+func (m *MockICore) Trends() ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Trends")
+	ret0, _ := ret[0].([]models.FilmItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Trends indicates an expected call of Trends.
+func (mr *MockICoreMockRecorder) Trends() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trends", reflect.TypeOf((*MockICore)(nil).Trends))
+}
+
+// UsersStatistics mocks base method.
+func (m *MockICore) UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UsersStatistics", idUser)
+	ret0, _ := ret[0].([]requests.UsersStatisticsResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UsersStatistics indicates an expected call of UsersStatistics.
+func (mr *MockICoreMockRecorder) UsersStatistics(idUser interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UsersStatistics", reflect.TypeOf((*MockICore)(nil).UsersStatistics), idUser)
 }

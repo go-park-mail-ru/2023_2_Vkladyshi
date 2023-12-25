@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	auth "github.com/go-park-mail-ru/2023_2_Vkladyshi/authorization/proto"
@@ -33,20 +34,26 @@ type ICore interface {
 	GetActorInfo(actorId uint64) (*requests.ActorResponse, error)
 	GetActorsCareer(actorId uint64) ([]models.ProfessionItem, error)
 	GetGenre(genreId uint64) (string, error)
-	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
+	FindFilm(title string, dateFrom string, dateTo string, ratingFrom float32, ratingTo float32,
+		mpaa string, genres []uint32, actors []string, first uint64, limit uint64,
 	) ([]models.FilmItem, error)
 	FavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	FavoriteFilmsAdd(userId uint64, filmId uint64) error
 	FavoriteFilmsRemove(userId uint64, filmId uint64) error
 	GetCalendar() (*requests.CalendarResponse, error)
 	GetUserId(ctx context.Context, sid string) (uint64, error)
-	FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error)
+	FindActor(name string, birthDate string, films []string, career []string, country string, first, limit uint64) ([]models.Character, error)
 	AddRating(filmId uint64, userId uint64, rating uint16) (bool, error)
 	AddFilm(film models.FilmItem, genres []uint64, actors []uint64) error
 	FavoriteActors(userId uint64, start uint64, end uint64) ([]models.Character, error)
 	FavoriteActorsAdd(userId uint64, filmId uint64) error
 	FavoriteActorsRemove(userId uint64, filmId uint64) error
+	DeleteRating(idUser uint64, idFilm uint64) error
+	GetNearFilms(ctx context.Context, userId uint64, lg *slog.Logger) ([]models.NearFilm, error)
+	AddNearFilm(ctx context.Context, active models.NearFilm, lg *slog.Logger) (bool, error)
+	UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error)
+	Trends() ([]models.FilmItem, error)
+	GetLastSeen([]models.NearFilm) ([]models.FilmItem, error)
 }
 
 type Core struct {
@@ -57,6 +64,7 @@ type Core struct {
 	profession profession.IProfessionRepo
 	calendar   calendar.ICalendarRepo
 	client     auth.AuthorizationClient
+	nearFilms  *film.FilmRedisRepo
 }
 
 func GetClient(port string) (auth.AuthorizationClient, error) {
@@ -71,7 +79,7 @@ func GetClient(port string) (auth.AuthorizationClient, error) {
 
 func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger,
 	films film.IFilmsRepo, genres genre.IGenreRepo, actors crew.ICrewRepo, professions profession.IProfessionRepo, calendar calendar.ICalendarRepo,
-) *Core {
+	nearFilms *film.FilmRedisRepo) *Core {
 	client, err := GetClient(cfg_sql.GrpcPort)
 	if err != nil {
 		lg.Error("get client error", "err", err.Error())
@@ -86,6 +94,7 @@ func GetCore(cfg_sql *configs.DbDsnCfg, lg *slog.Logger,
 		profession: professions,
 		calendar:   calendar,
 		client:     client,
+		nearFilms:  nearFilms,
 	}
 	return &core
 }
@@ -213,11 +222,11 @@ func (core *Core) GetGenre(genreId uint64) (string, error) {
 	return genre, nil
 }
 
-func (core *Core) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
+func (core *Core) FindFilm(title string, dateFrom string, dateTo string, ratingFrom float32, ratingTo float32,
+	mpaa string, genres []uint32, actors []string, first uint64, limit uint64,
 ) ([]models.FilmItem, error) {
 
-	films, err := core.films.FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	films, err := core.films.FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 	if err != nil {
 		core.lg.Error("find film error", "err", err.Error())
 		return nil, fmt.Errorf("find film err: %w", err)
@@ -297,8 +306,8 @@ func (core *Core) GetUserId(ctx context.Context, sid string) (uint64, error) {
 	return uint64(response.Value), nil
 }
 
-func (core *Core) FindActor(name string, birthDate string, films []string, career []string, country string) ([]models.Character, error) {
-	actors, err := core.crew.FindActor(name, birthDate, films, career, country)
+func (core *Core) FindActor(name string, birthDate string, films []string, career []string, country string, first, limit uint64) ([]models.Character, error) {
+	actors, err := core.crew.FindActor(name, birthDate, films, career, country, first, limit)
 	if err != nil {
 		core.lg.Error("find actor error", "err", err.Error())
 		return nil, fmt.Errorf("find actor err: %w", err)
@@ -394,4 +403,71 @@ func (core *Core) FavoriteActorsRemove(userId uint64, actorId uint64) error {
 	}
 
 	return nil
+}
+
+func (core *Core) DeleteRating(idUser uint64, idFilm uint64) error {
+	err := core.films.DeleteRating(idUser, idFilm)
+	if err != nil {
+		core.lg.Error("delete rating error", "err", err.Error())
+		return fmt.Errorf("delete rating err: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Core) GetNearFilms(ctx context.Context, userId uint64, lg *slog.Logger) ([]models.NearFilm, error) {
+	nearFilms, err := c.nearFilms.GetNearFilms(ctx, strconv.FormatUint(userId, 10), lg)
+	if err != nil {
+		lg.Error("Failed to get near films", "error", err.Error())
+		return nil, err
+	}
+	return nearFilms, nil
+}
+
+func (c *Core) AddNearFilm(ctx context.Context, active models.NearFilm, lg *slog.Logger) (bool, error) {
+	added, err := c.nearFilms.AddNearFilm(ctx, active, lg)
+	if err != nil {
+		lg.Error("Failed to add near film", "error", err.Error())
+		return false, err
+	}
+	return added, nil
+}
+
+func (core *Core) UsersStatistics(idUser uint64) ([]requests.UsersStatisticsResponse, error) {
+	stats, err := core.genres.UsersStatistics(idUser)
+	if err != nil {
+		core.lg.Error("users statistics error", "err", err.Error())
+		return nil, fmt.Errorf("users statistics err: %w", err)
+	}
+
+	return stats, nil
+}
+
+func (core *Core) Trends() ([]models.FilmItem, error) {
+	trends, err := core.films.Trends()
+	if err != nil {
+		core.lg.Error("trends error", "err", err.Error())
+		return nil, fmt.Errorf("trends err: %w", err)
+	}
+
+	return trends, nil
+}
+
+func (core *Core) GetLastSeen(filmsIds []models.NearFilm) ([]models.FilmItem, error) {
+	ids := []uint64{}
+	for _, id := range filmsIds {
+		ids = append(ids, id.IdFilm)
+	}
+
+	films, err := core.films.GetLasts(ids)
+	if err != nil {
+		core.lg.Error("trends error", "err", err.Error())
+		return nil, fmt.Errorf("trends err: %w", err)
+	}
+
+	if len(films) == 0 {
+		return nil, ErrNotFound
+	}
+
+	return films, nil
 }

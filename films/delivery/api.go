@@ -38,7 +38,7 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 
 	api.mx.Handle("/metrics", promhttp.Handler())
 	api.mx.HandleFunc("/api/v1/films", api.Films)
-	api.mx.HandleFunc("/api/v1/film", api.Film)
+	api.mx.Handle("/api/v1/film", middleware.AuthCheck(http.HandlerFunc(api.Film), c, l))
 	api.mx.HandleFunc("/api/v1/actor", api.Actor)
 	api.mx.Handle("/api/v1/favorite/films", middleware.AuthCheck(http.HandlerFunc(api.FavoriteFilms), c, l))
 	api.mx.Handle("/api/v1/favorite/film/add", middleware.AuthCheck(http.HandlerFunc(api.FavoriteFilmsAdd), c, l))
@@ -51,6 +51,10 @@ func GetApi(c *usecase.Core, l *slog.Logger, cfg *configs.DbDsnCfg) *API {
 	api.mx.HandleFunc("/api/v1/calendar", api.Calendar)
 	api.mx.Handle("/api/v1/rating/add", middleware.AuthCheck(http.HandlerFunc(api.AddRating), c, l))
 	api.mx.HandleFunc("/api/v1/add/film", api.AddFilm)
+	api.mx.Handle("/api/v1/rating/delete", middleware.AuthCheck(http.HandlerFunc(api.DeleteRating), c, l))
+	api.mx.Handle("/api/v1/statistics", middleware.AuthCheck(http.HandlerFunc(api.UsersStatistics), c, l))
+	api.mx.HandleFunc("/api/v1/trends", api.Trends)
+	api.mx.Handle("/api/v1/lasts", middleware.AuthCheck(http.HandlerFunc(api.LastSeen), c, l))
 
 	return api
 }
@@ -67,7 +71,6 @@ func (a *API) Films(w http.ResponseWriter, r *http.Request) {
 	start := time.Now()
 
 	if r.Method != http.MethodGet {
-		fmt.Println("nice")
 		response.Status = http.StatusMethodNotAllowed
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
@@ -141,6 +144,29 @@ func (a *API) Film(w http.ResponseWriter, r *http.Request) {
 	response.Body = film
 
 	a.ct.SendResponse(w, r, response, a.lg, start)
+
+	userId, isAuth := r.Context().Value(middleware.UserIDKey).(uint64)
+
+	if !isAuth {
+		a.lg.Error("User StatusUnauthorized", "err", !isAuth)
+		return
+	}
+
+	nearFilm := models.NearFilm{
+		IdFilm: filmId,
+		IdUser: userId,
+	}
+
+	addedNearFilm, err := a.core.AddNearFilm(r.Context(), nearFilm, a.lg)
+	if err != nil {
+		a.lg.Error("Failed to add near film", "error", err.Error())
+		return
+	}
+
+	if !addedNearFilm {
+		a.lg.Error("Failed to add near film", "error", err.Error())
+		return
+	}
 }
 
 func (a *API) Actor(w http.ResponseWriter, r *http.Request) {
@@ -203,8 +229,8 @@ func (a *API) FindFilm(w http.ResponseWriter, r *http.Request) {
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}
-
-	films, err := a.core.FindFilm(request.Title, request.DateFrom, request.DateTo, request.RatingFrom, request.RatingTo, request.Mpaa, request.Genres, request.Actors)
+	films, err := a.core.FindFilm(request.Title, request.DateFrom, request.DateTo, request.RatingFrom, request.RatingTo,
+		request.Mpaa, request.Genres, request.Actors, (request.Page-1)*request.PerPage, request.PerPage)
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
@@ -371,7 +397,7 @@ func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	actors, err := a.core.FindActor(request.Name, request.BirthDate, request.Films, request.Career, request.Country)
+	actors, err := a.core.FindActor(request.Name, request.BirthDate, request.Films, request.Career, request.Country, (request.Page-1)*request.PerPage, request.PerPage)
 	if err != nil {
 		if errors.Is(err, usecase.ErrNotFound) {
 			response.Status = http.StatusNotFound
@@ -387,6 +413,7 @@ func (a *API) FindActor(w http.ResponseWriter, r *http.Request) {
 
 	actorsResponse := requests.ActorsResponse{
 		Actors: actors,
+		Total:  uint64(len(actors)),
 	}
 	response.Body = actorsResponse
 
@@ -655,5 +682,131 @@ func (a *API) FavoriteActors(w http.ResponseWriter, r *http.Request) {
 
 	response.Body = actorsResponse
 
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) DeleteRating(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodPost {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	var request requests.DeleteCommentRequest
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		response.Status = http.StatusBadRequest
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	if err = easyjson.Unmarshal(body, &request); err != nil {
+		response.Status = http.StatusBadRequest
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	err = a.core.DeleteRating(request.IdUser, request.IdFilm)
+	if err != nil {
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) UsersStatistics(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	userId := r.Context().Value(middleware.UserIDKey).(uint64)
+
+	stats, err := a.core.UsersStatistics(userId)
+	if err != nil {
+		a.lg.Error("users statistics error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	response.Body = stats
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) Trends(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	trends, err := a.core.Trends()
+	if err != nil {
+		a.lg.Error("trends error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+	trendsResponse := requests.FilmsResponse{
+		Films: trends,
+		Total: uint64(len(trends)),
+	}
+
+	response.Body = trendsResponse
+	a.ct.SendResponse(w, r, response, a.lg, start)
+}
+
+func (a *API) LastSeen(w http.ResponseWriter, r *http.Request) {
+	response := requests.Response{Status: http.StatusOK, Body: nil}
+	start := time.Now()
+
+	if r.Method != http.MethodGet {
+		response.Status = http.StatusMethodNotAllowed
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	userId := r.Context().Value(middleware.UserIDKey).(uint64)
+
+	filmsIds, err := a.core.GetNearFilms(r.Context(), userId, a.lg)
+	if err != nil {
+		a.lg.Error("last seen error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	films, err := a.core.GetLastSeen(filmsIds)
+	if err != nil {
+		if errors.Is(err, usecase.ErrNotFound) {
+			response.Status = http.StatusNotFound
+			a.ct.SendResponse(w, r, response, a.lg, start)
+			return
+		}
+		a.lg.Error("last seen error", "err", err.Error())
+		response.Status = http.StatusInternalServerError
+		a.ct.SendResponse(w, r, response, a.lg, start)
+		return
+	}
+
+	filmsResponse := requests.FilmsResponse{
+		Films: films,
+		Total: uint64(len(films)),
+	}
+
+	response.Body = filmsResponse
 	a.ct.SendResponse(w, r, response, a.lg, start)
 }

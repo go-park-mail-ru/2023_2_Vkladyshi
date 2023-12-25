@@ -30,6 +30,13 @@ func getResponse(w *httptest.ResponseRecorder) (*requests.Response, error) {
 	return &response, nil
 }
 
+func createDelRatingBody(req requests.DeleteCommentRequest) io.Reader {
+	jsonReq, _ := easyjson.Marshal(req)
+
+	body := bytes.NewBuffer(jsonReq)
+	return body
+}
+
 func createBody(req requests.CommentRequest) io.Reader {
 	jsonReq, _ := easyjson.Marshal(req)
 
@@ -161,6 +168,67 @@ func TestCommentAdd(t *testing.T) {
 		}
 		if response.Body != nil {
 			t.Errorf("unexpected body %v", response.Body)
+			return
+		}
+	}
+}
+
+func TestDeleteComment(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		result *requests.Response
+		body   io.Reader
+	}{
+		"Bad method": {
+			method: http.MethodGet,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"no body error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+			body:   nil,
+		},
+		"Core error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+			body:   createDelRatingBody(requests.DeleteCommentRequest{IdUser: 5, IdFilm: 1}),
+		},
+		"Ok": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+			body:   createDelRatingBody(requests.DeleteCommentRequest{IdUser: 5, IdFilm: 2}),
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().DeleteComment(uint64(5), uint64(1)).Return(fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().DeleteComment(uint64(5), uint64(2)).Return(nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, lg: logger, ct: collector}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/comment/delete", curr.body)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+
+		w := httptest.NewRecorder()
+
+		api.DeleteComment(w, newReq)
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
+		if response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, response.Body)
 			return
 		}
 	}

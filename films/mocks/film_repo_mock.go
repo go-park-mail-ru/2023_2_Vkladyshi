@@ -91,19 +91,33 @@ func (mr *MockIFilmsRepoMockRecorder) CheckFilm(userId, filmId interface{}) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckFilm", reflect.TypeOf((*MockIFilmsRepo)(nil).CheckFilm), userId, filmId)
 }
 
-// FindFilm mocks base method.
-func (m *MockIFilmsRepo) FindFilm(title, dateFrom, dateTo string, ratingFrom, ratingTo float32, mpaa string, genres []uint32, actors []string) ([]models.FilmItem, error) {
+// DeleteRating mocks base method.
+func (m *MockIFilmsRepo) DeleteRating(idUser, idFilm uint64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindFilm", title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	ret := m.ctrl.Call(m, "DeleteRating", idUser, idFilm)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteRating indicates an expected call of DeleteRating.
+func (mr *MockIFilmsRepoMockRecorder) DeleteRating(idUser, idFilm interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteRating", reflect.TypeOf((*MockIFilmsRepo)(nil).DeleteRating), idUser, idFilm)
+}
+
+// FindFilm mocks base method.
+func (m *MockIFilmsRepo) FindFilm(title, dateFrom, dateTo string, ratingFrom, ratingTo float32, mpaa string, genres []uint32, actors []string, first, limit uint64) ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindFilm", title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 	ret0, _ := ret[0].([]models.FilmItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FindFilm indicates an expected call of FindFilm.
-func (mr *MockIFilmsRepoMockRecorder) FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors interface{}) *gomock.Call {
+func (mr *MockIFilmsRepoMockRecorder) FindFilm(title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFilm", reflect.TypeOf((*MockIFilmsRepo)(nil).FindFilm), title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindFilm", reflect.TypeOf((*MockIFilmsRepo)(nil).FindFilm), title, dateFrom, dateTo, ratingFrom, ratingTo, mpaa, genres, actors, first, limit)
 }
 
 // GetFavoriteFilms mocks base method.
@@ -197,6 +211,21 @@ func (mr *MockIFilmsRepoMockRecorder) GetFilmsByGenre(genre, start, end interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetFilmsByGenre", reflect.TypeOf((*MockIFilmsRepo)(nil).GetFilmsByGenre), genre, start, end)
 }
 
+// GetLasts mocks base method.
+func (m *MockIFilmsRepo) GetLasts(ids []uint64) ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetLasts", ids)
+	ret0, _ := ret[0].([]models.FilmItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetLasts indicates an expected call of GetLasts.
+func (mr *MockIFilmsRepoMockRecorder) GetLasts(ids interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLasts", reflect.TypeOf((*MockIFilmsRepo)(nil).GetLasts), ids)
+}
+
 // HasUsersRating mocks base method.
 func (m *MockIFilmsRepo) HasUsersRating(userId, filmId uint64) (bool, error) {
 	m.ctrl.T.Helper()
@@ -224,4 +253,19 @@ func (m *MockIFilmsRepo) RemoveFavoriteFilm(userId, filmId uint64) error {
 func (mr *MockIFilmsRepoMockRecorder) RemoveFavoriteFilm(userId, filmId interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RemoveFavoriteFilm", reflect.TypeOf((*MockIFilmsRepo)(nil).RemoveFavoriteFilm), userId, filmId)
+}
+
+// Trends mocks base method.
+func (m *MockIFilmsRepo) Trends() ([]models.FilmItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Trends")
+	ret0, _ := ret[0].([]models.FilmItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Trends indicates an expected call of Trends.
+func (mr *MockIFilmsRepoMockRecorder) Trends() *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Trends", reflect.TypeOf((*MockIFilmsRepo)(nil).Trends))
 }

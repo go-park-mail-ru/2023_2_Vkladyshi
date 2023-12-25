@@ -47,6 +47,7 @@ type (
 
 	ActorsResponse struct {
 		Actors []models.Character `json:"actors"`
+		Total  uint64             `json:"total"`
 	}
 
 	CommentResponse struct {
@@ -75,6 +76,16 @@ type (
 
 	SubcribeResponse struct {
 		IsSubcribed bool `json:"subscribe"`
+	}
+
+	UsersResponse struct {
+		Users []models.UserItem `json:"users"`
+	}
+
+	UsersStatisticsResponse struct {
+		GenreId uint64  `json:"genre_id"`
+		Count   uint64  `json:"count"`
+		Avg     float64 `json:"avg"`
 	}
 )
 

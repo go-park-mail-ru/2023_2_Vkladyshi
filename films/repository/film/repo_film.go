@@ -17,14 +17,13 @@ import (
 )
 
 //go:generate mockgen -source=repo_film.go -destination=../../mocks/film_repo_mock.go -package=mocks
-
 type IFilmsRepo interface {
 	GetFilmsByGenre(genre uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	GetFilms(start uint64, end uint64) ([]models.FilmItem, error)
 	GetFilm(filmId uint64) (*models.FilmItem, error)
 	GetFilmRating(filmId uint64) (float64, uint64, error)
-	FindFilm(title string, dateFrom string, dateTo string,
-		ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
+	FindFilm(title string, dateFrom string, dateTo string, ratingFrom float32, ratingTo float32,
+		mpaa string, genres []uint32, actors []string, first uint64, limit uint64,
 	) ([]models.FilmItem, error)
 	GetFavoriteFilms(userId uint64, start uint64, end uint64) ([]models.FilmItem, error)
 	AddFavoriteFilm(userId uint64, filmId uint64) error
@@ -34,6 +33,9 @@ type IFilmsRepo interface {
 	HasUsersRating(userId uint64, filmId uint64) (bool, error)
 	AddFilm(film models.FilmItem) error
 	GetFilmId(title string) (uint64, error)
+	DeleteRating(idUser uint64, idFilm uint64) error
+	Trends() ([]models.FilmItem, error)
+	GetLasts(ids []uint64) ([]models.FilmItem, error)
 }
 
 type RepoPostgre struct {
@@ -157,8 +159,8 @@ func (repo *RepoPostgre) GetFilmRating(filmId uint64) (float64, uint64, error) {
 	return rating.Float64, uint64(number.Int64), nil
 }
 
-func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
-	ratingFrom float32, ratingTo float32, mpaa string, genres []uint32, actors []string,
+func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string, ratingFrom float32, ratingTo float32,
+	mpaa string, genres []uint32, actors []string, first uint64, limit uint64,
 ) ([]models.FilmItem, error) {
 
 	films := []models.FilmItem{}
@@ -169,7 +171,7 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	s.WriteString(
 		"SELECT DISTINCT film.title, film.id, film.poster, AVG(users_comment.rating) FROM film " +
 			"JOIN films_genre ON film.id = films_genre.id_film " +
-			"JOIN users_comment ON film.id = users_comment.id_film " +
+			"LEFT JOIN users_comment ON film.id = users_comment.id_film " +
 			"JOIN person_in_film ON film.id = person_in_film.id_film " +
 			"JOIN crew ON person_in_film.id_person = crew.id ")
 	if title != "" {
@@ -237,10 +239,12 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 	}
 	s.WriteString(
 		"GROUP BY film.title, film.id " +
-			"HAVING AVG(users_comment.rating) >= $" + strconv.Itoa(paramNum) + " AND AVG(users_comment.rating) <= $" + strconv.Itoa(paramNum+1) + " " +
-			"ORDER BY film.title")
+			"HAVING (AVG(users_comment.rating) >= $" + strconv.Itoa(paramNum) + " AND AVG(users_comment.rating) <= $" + strconv.Itoa(paramNum+1) + ") " +
+			"OR AVG(users_comment.rating) IS NULL " +
+			"ORDER BY film.title " +
+			"LIMIT $" + strconv.Itoa(paramNum+2) + " OFFSET $" + strconv.Itoa(paramNum+3))
 
-	params = append(params, ratingFrom, ratingTo)
+	params = append(params, ratingFrom, ratingTo, limit, first)
 	rows, err := repo.db.Query(s.String(), params...)
 
 	if err != nil {
@@ -250,10 +254,15 @@ func (repo *RepoPostgre) FindFilm(title string, dateFrom string, dateTo string,
 
 	for rows.Next() {
 		post := models.FilmItem{}
-		err := rows.Scan(&post.Title, &post.Id, &post.Poster, &post.Rating)
+		ratingPost := sql.NullFloat64{}
+		err := rows.Scan(&post.Title, &post.Id, &post.Poster, &ratingPost)
 		if err != nil {
 			return nil, fmt.Errorf("find film scan err: %w", err)
 		}
+		if !ratingPost.Valid {
+			ratingPost.Float64 = 0
+		}
+		post.Rating = ratingPost.Float64
 		films = append(films, post)
 	}
 
@@ -366,4 +375,63 @@ func (repo *RepoPostgre) GetFilmId(title string) (uint64, error) {
 	}
 
 	return id, nil
+}
+
+func (repo *RepoPostgre) DeleteRating(idUser uint64, idFilm uint64) error {
+	_, err := repo.db.Exec("DELETE FROM users_comment WHERE id_user = $1 AND id_film = $2", idUser, idFilm)
+	if err != nil {
+		return fmt.Errorf("delete rating err: %w", err)
+	}
+	return nil
+}
+
+func (repo *RepoPostgre) Trends() ([]models.FilmItem, error) {
+	trends := []models.FilmItem{}
+
+	rows, err := repo.db.Query("SELECT film.id, film.title, film.poster FROM film " +
+		"JOIN users_comment ON film.id = users_comment.id_film " +
+		"WHERE users_comment.date > (CURRENT_TIMESTAMP - interval'48 hours') " +
+		"GROUP BY film.title, film.id, film.poster " +
+		"ORDER BY COUNT(users_comment.id_film) DESC " +
+		"LIMIT 5")
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("trends err: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		post := models.FilmItem{}
+		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		if err != nil {
+			return nil, fmt.Errorf("trends scan err: %w", err)
+		}
+		trends = append(trends, post)
+	}
+
+	return trends, nil
+}
+
+func (repo *RepoPostgre) GetLasts(ids []uint64) ([]models.FilmItem, error) {
+	films := []models.FilmItem{}
+
+	rows, err := repo.db.Query("SELECT id, title, poster FROM film "+
+		"WHERE (CASE WHEN array_length($1::int[], 1)> 0 "+
+		"THEN id = ANY ($1::int[]) ELSE FALSE END) "+
+		"ORDER BY array_position($1::int[], id) "+
+		"LIMIT 10", pq.Array(ids))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("get lasts err: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		post := models.FilmItem{}
+		err := rows.Scan(&post.Id, &post.Title, &post.Poster)
+		if err != nil {
+			return nil, fmt.Errorf("get lasts scan err: %w", err)
+		}
+		films = append(films, post)
+	}
+
+	return films, nil
 }
