@@ -194,3 +194,45 @@ func TestHasUsersComment(t *testing.T) {
 		return
 	}
 }
+
+func TestDeleteComment(t *testing.T) {
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("cant create mock: %s", err)
+	}
+	defer db.Close()
+
+	selectRow := "DELETE FROM users_comment WHERE id_user = $1 AND id_film = $2"
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).WillReturnResult(sqlmock.NewResult(0, 1))
+
+	repo := &RepoPostgre{
+		db: db,
+	}
+
+	err = repo.DeleteComment(1, 1)
+	if err != nil {
+		t.Errorf("unexpected err: %s", err)
+	}
+
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+
+	mock.ExpectExec(
+		regexp.QuoteMeta(selectRow)).
+		WithArgs(1, 1).WillReturnError(fmt.Errorf("repo err"))
+
+	err = repo.DeleteComment(1, 1)
+	if err := mock.ExpectationsWereMet(); err != nil {
+		t.Errorf("there were unfulfilled expectations: %s", err)
+		return
+	}
+	if err == nil {
+		t.Errorf("expected error, got nil")
+		return
+	}
+}

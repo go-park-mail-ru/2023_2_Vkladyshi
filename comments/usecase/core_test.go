@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"testing"
@@ -64,5 +65,36 @@ func TestAddComment(t *testing.T) {
 	if found {
 		t.Errorf("waited not found")
 		return
+	}
+}
+
+func TestDeleteComment(t *testing.T) {
+	testCases := map[string]struct {
+		err error
+	}{
+		"repo error": {
+			err: fmt.Errorf("repo err"),
+		},
+		"OK": {
+			err: nil,
+		},
+	}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := mocks.NewMockICommentRepo(mockCtrl)
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	core := Core{comments: mockObj, lg: logger}
+
+	for _, curr := range testCases {
+		mockObj.EXPECT().DeleteComment(uint64(1), uint64(1)).Return(curr.err).Times(1)
+
+		err := core.DeleteComment(1, 1)
+		if !errors.Is(err, curr.err) {
+			t.Errorf("Unexpected error. wanted %s, got %s", curr.err, err)
+		}
 	}
 }

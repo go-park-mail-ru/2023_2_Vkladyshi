@@ -63,6 +63,13 @@ func createRatingBody(req requests.CommentRequest) io.Reader {
 	return body
 }
 
+func createDelRatingBody(req requests.DeleteCommentRequest) io.Reader {
+	jsonReq, _ := easyjson.Marshal(req)
+
+	body := bytes.NewBuffer(jsonReq)
+	return body
+}
+
 var collector *requests.Collector = requests.GetCollector()
 
 func TestFilms(t *testing.T) {
@@ -950,6 +957,279 @@ func TestAddRating(t *testing.T) {
 		w := httptest.NewRecorder()
 
 		api.AddRating(w, newReq)
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
+		if response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, response.Body)
+			return
+		}
+	}
+}
+
+func TestDeleteRating(t *testing.T) {
+	testCases := map[string]struct {
+		method string
+		result *requests.Response
+		body   io.Reader
+	}{
+		"Bad method": {
+			method: http.MethodGet,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		"no body error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusBadRequest, Body: nil},
+			body:   nil,
+		},
+		"Core error": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+			body:   createDelRatingBody(requests.DeleteCommentRequest{IdUser: 5, IdFilm: 1}),
+		},
+		"Ok": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusOK, Body: nil},
+			body:   createDelRatingBody(requests.DeleteCommentRequest{IdUser: 5, IdFilm: 2}),
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().DeleteRating(uint64(5), uint64(1)).Return(fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().DeleteRating(uint64(5), uint64(2)).Return(nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, lg: logger, ct: collector}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/rating/delete", curr.body)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, uint64(1)))
+
+		w := httptest.NewRecorder()
+
+		api.DeleteRating(w, newReq)
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
+		if response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, response.Body)
+			return
+		}
+	}
+}
+
+func TestUsersStatistics(t *testing.T) {
+	expectItem := requests.UsersStatisticsResponse{GenreId: 1, Count: 1, Avg: 1}
+	expect := []requests.UsersStatisticsResponse{expectItem}
+	testCases := map[string]struct {
+		method string
+		result *requests.Response
+		userId uint64
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+			userId: 1,
+		},
+		"Core error": {
+			method: http.MethodGet,
+			result: &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+			userId: 2,
+		},
+		"Ok": {
+			method: http.MethodGet,
+			result: getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expect}),
+			userId: 3,
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().UsersStatistics(uint64(2)).Return(nil, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().UsersStatistics(uint64(3)).Return(expect, nil).Times(1)
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, lg: logger, ct: collector}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/statistics", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, curr.userId))
+
+		w := httptest.NewRecorder()
+
+		api.UsersStatistics(w, newReq)
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
+		if response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, response.Body)
+			return
+		}
+	}
+}
+
+func TestTrends(t *testing.T) {
+	expectItem := models.FilmItem{Title: "t1"}
+	expect := []models.FilmItem{expectItem}
+	expectResponse := requests.FilmsResponse{Films: expect, Total: uint64(len(expect))}
+	testCases := []struct {
+		testName string
+		method   string
+		result   *requests.Response
+	}{
+		{
+			testName: "Bad method",
+			method:   http.MethodPost,
+			result:   &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+		},
+		{
+			testName: "Core error",
+			method:   http.MethodGet,
+			result:   &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+		},
+		{
+			testName: "Ok",
+			method:   http.MethodGet,
+			result:   getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectResponse}),
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+	mockCore.EXPECT().Trends().Return(nil, fmt.Errorf("core_err")).Times(1)
+	mockCore.EXPECT().Trends().Return(expect, nil).Times(1)
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	api := API{core: mockCore, lg: logger, ct: collector}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/trends", nil)
+		w := httptest.NewRecorder()
+
+		api.Trends(w, r)
+		response, err := getResponse(w)
+		if err != nil {
+			t.Errorf("unexpected error: %s", err)
+			return
+		}
+		if response.Status != curr.result.Status {
+			t.Errorf("unexpected status: %d, want %d", response.Status, curr.result.Status)
+			return
+		}
+		if !reflect.DeepEqual(response.Body, curr.result.Body) {
+			t.Errorf("wanted %v, got %v", curr.result.Body, response.Body)
+			return
+		}
+	}
+}
+
+func TestLastSeen(t *testing.T) {
+	expectNear := []models.NearFilm{{IdFilm: 1, IdUser: 5}}
+	expectBadNear := []models.NearFilm{{IdFilm: 1, IdUser: 3}}
+	expect := []models.FilmItem{{Title: "t1"}}
+	expectResponse := requests.FilmsResponse{
+		Films: expect,
+		Total: uint64(len(expect)),
+	}
+	testCases := map[string]struct {
+		method         string
+		result         *requests.Response
+		userId         uint64
+		nearFilmResult []models.NearFilm
+		nearFilmErr    error
+		lastSeenResult []models.FilmItem
+		lastSeenError  error
+	}{
+		"Bad method": {
+			method: http.MethodPost,
+			result: &requests.Response{Status: http.StatusMethodNotAllowed, Body: nil},
+			userId: 1,
+		},
+		"GetNearFilms error": {
+			method:         http.MethodGet,
+			result:         &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+			userId:         2,
+			nearFilmResult: nil,
+			nearFilmErr:    fmt.Errorf("core_err"),
+		},
+		"GetLastSeen error": {
+			method:         http.MethodGet,
+			result:         &requests.Response{Status: http.StatusInternalServerError, Body: nil},
+			userId:         3,
+			nearFilmResult: expectBadNear,
+			nearFilmErr:    nil,
+			lastSeenResult: nil,
+			lastSeenError:  fmt.Errorf("core_err"),
+		},
+		"not found error": {
+			method:         http.MethodGet,
+			result:         &requests.Response{Status: http.StatusNotFound, Body: nil},
+			userId:         4,
+			nearFilmResult: []models.NearFilm{},
+			nearFilmErr:    nil,
+			lastSeenResult: nil,
+			lastSeenError:  usecase.ErrNotFound,
+		},
+		"Ok": {
+			method:         http.MethodGet,
+			result:         getExpectedResult(&requests.Response{Status: http.StatusOK, Body: expectResponse}),
+			userId:         5,
+			nearFilmResult: expectNear,
+			nearFilmErr:    nil,
+			lastSeenResult: expect,
+			lastSeenError:  nil,
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	mockCore := mocks.NewMockICore(mockCtrl)
+
+	api := API{core: mockCore, lg: logger, ct: collector}
+
+	for _, curr := range testCases {
+		r := httptest.NewRequest(curr.method, "/api/v1/lasts", nil)
+		newReq := r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, curr.userId))
+
+		mockCore.EXPECT().GetNearFilms(newReq.Context(), curr.userId, logger).Return(curr.nearFilmResult, curr.nearFilmErr).MaxTimes(1)
+		mockCore.EXPECT().GetLastSeen(curr.nearFilmResult).Return(curr.lastSeenResult, curr.lastSeenError).MaxTimes(1)
+
+		w := httptest.NewRecorder()
+
+		api.LastSeen(w, newReq)
 		response, err := getResponse(w)
 		if err != nil {
 			t.Errorf("unexpected error: %s", err)

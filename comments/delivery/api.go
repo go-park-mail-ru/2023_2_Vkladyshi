@@ -154,7 +154,7 @@ func (a *API) DeleteComment(w http.ResponseWriter, r *http.Request) {
 
 	err = a.core.DeleteComment(request.IdUser, request.IdFilm)
 	if err != nil {
-		response.Status = http.StatusBadRequest
+		response.Status = http.StatusInternalServerError
 		a.ct.SendResponse(w, r, response, a.lg, start)
 		return
 	}

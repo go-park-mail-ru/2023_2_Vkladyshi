@@ -454,7 +454,7 @@ func (core *Core) Trends() ([]models.FilmItem, error) {
 }
 
 func (core *Core) GetLastSeen(filmsIds []models.NearFilm) ([]models.FilmItem, error) {
-	ids := make([]uint64, len(filmsIds))
+	ids := []uint64{}
 	for _, id := range filmsIds {
 		ids = append(ids, id.IdFilm)
 	}

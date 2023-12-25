@@ -764,3 +764,149 @@ func TestFavoriteActorsAdd(t *testing.T) {
 		return
 	}
 }
+
+func TestDeleteRating(t *testing.T) {
+	testCases := map[string]struct {
+		err error
+	}{
+		"repo error": {
+			err: fmt.Errorf("repo err"),
+		},
+		"OK": {
+			err: nil,
+		},
+	}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := mocks.NewMockIFilmsRepo(mockCtrl)
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	core := Core{films: mockObj, lg: logger}
+
+	for _, curr := range testCases {
+		mockObj.EXPECT().DeleteRating(uint64(1), uint64(1)).Return(curr.err).Times(1)
+
+		err := core.DeleteRating(1, 1)
+		if !errors.Is(err, curr.err) {
+			t.Errorf("Unexpected error. wanted %s, got %s", curr.err, err)
+		}
+	}
+}
+
+func TestUsersStatistics(t *testing.T) {
+	testCases := map[string]struct {
+		err    error
+		result []requests.UsersStatisticsResponse
+	}{
+		"repo error": {
+			err:    fmt.Errorf("repo err"),
+			result: nil,
+		},
+		"OK": {
+			result: []requests.UsersStatisticsResponse{{GenreId: 1}},
+			err:    nil,
+		},
+	}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := mocks.NewMockIGenreRepo(mockCtrl)
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	core := Core{genres: mockObj, lg: logger}
+
+	for _, curr := range testCases {
+		mockObj.EXPECT().UsersStatistics(uint64(1)).Return(curr.result, curr.err).Times(1)
+
+		res, err := core.UsersStatistics(1)
+		if !errors.Is(err, curr.err) {
+			t.Errorf("Unexpected error. wanted %s, got %s", curr.err, err)
+		}
+		if !reflect.DeepEqual(res, curr.result) {
+			t.Errorf("Unexpected result. wanted %v, got %v", curr.result, res)
+		}
+	}
+}
+
+func TestTrends(t *testing.T) {
+	testCases := map[string]struct {
+		err    error
+		result []models.FilmItem
+	}{
+		"repo error": {
+			err:    fmt.Errorf("repo err"),
+			result: nil,
+		},
+		"OK": {
+			result: []models.FilmItem{{Title: "t1"}},
+			err:    nil,
+		},
+	}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := mocks.NewMockIFilmsRepo(mockCtrl)
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	core := Core{films: mockObj, lg: logger}
+
+	for _, curr := range testCases {
+		mockObj.EXPECT().Trends().Return(curr.result, curr.err).Times(1)
+
+		res, err := core.Trends()
+		if !errors.Is(err, curr.err) {
+			t.Errorf("Unexpected error. wanted %s, got %s", curr.err, err)
+		}
+		if !reflect.DeepEqual(res, curr.result) {
+			t.Errorf("Unexpected result. wanted %v, got %v", curr.result, res)
+		}
+	}
+}
+
+func TestGetLastSeen(t *testing.T) {
+	testCases := map[string]struct {
+		err    error
+		result []models.FilmItem
+	}{
+		"repo error": {
+			err:    fmt.Errorf("repo err"),
+			result: nil,
+		},
+		"not found": {
+			err:    ErrNotFound,
+			result: nil,
+		},
+		"OK": {
+			result: []models.FilmItem{{Title: "t1"}},
+			err:    nil,
+		},
+	}
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockObj := mocks.NewMockIFilmsRepo(mockCtrl)
+
+	var buff bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&buff, nil))
+
+	core := Core{films: mockObj, lg: logger}
+
+	for _, curr := range testCases {
+		mockObj.EXPECT().GetLasts([]uint64{1, 2}).Return(curr.result, curr.err).Times(1)
+
+		res, err := core.GetLastSeen([]models.NearFilm{{IdFilm: 1}, {IdFilm: 2}})
+		if !errors.Is(err, curr.err) {
+			t.Errorf("Unexpected error. wanted %s, got %s", curr.err, err)
+		}
+		if !reflect.DeepEqual(res, curr.result) {
+			t.Errorf("Unexpected result. wanted %v, got %v", curr.result, res)
+		}
+	}
+}
